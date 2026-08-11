@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>जिनवाणी प्रश्नोत्तरी</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --parchment:#f3e6c9;
+    --parchment-deep:#ead6ab;
+    --ink:#2c1810;
+    --maroon:#7a1f2b;
+    --maroon-deep:#5c1620;
+    --gold:#b8860b;
+    --gold-light:#dcae3a;
+    --sage:#4b6b4f;
+    --rust:#a4392f;
+    --shadow: 0 10px 30px rgba(44,24,16,0.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Mukta', sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(184,134,11,0.10), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(122,31,43,0.10), transparent 45%),
+      var(--parchment);
+    color:var(--ink);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:640px;
+    margin:0 auto;
+    padding:20px 18px 60px;
+    min-height:100vh;
+  }
+  header.site{
+    text-align:center;
+    padding:22px 0 18px;
+    border-bottom:2px solid rgba(122,31,43,0.25);
+    margin-bottom:24px;
+    position:relative;
+  }
+  header.site .eyebrow{
+    font-size:12px;
+    letter-spacing:0.14em;
+    color:var(--maroon);
+    text-transform:uppercase;
+    font-weight:600;
+  }
+  header.site h1{
+    font-family:'Yatra One', cursive;
+    font-size:34px;
+    margin:6px 0 4px;
+    color:var(--maroon-deep);
+    letter-spacing:0.5px;
+  }
+  header.site p.sub{
+    margin:0;
+    font-size:14.5px;
+    color:#5a4633;
+  }
+
+  /* ---------- Chapter cards ---------- */
+  .chapter-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+  }
+  .chapter-card{
+    background:linear-gradient(180deg, #fbf3de, var(--parchment-deep));
+    border:1px solid rgba(122,31,43,0.22);
+    border-radius:14px;
+    padding:18px 18px 16px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .chapter-card:hover{ transform:translateY(-2px); }
+  .chapter-card:active{ transform:translateY(0px) scale(0.995); }
+  .chapter-card::before{
+    content:"";
+    position:absolute; top:0; left:0; bottom:0;
+    width:6px;
+    background:var(--maroon);
+  }
+  .chapter-card .num{
+    font-family:'Yatra One', cursive;
+    font-size:13px;
+    color:var(--gold);
+    letter-spacing:0.12em;
+  }
+  .chapter-card h2{
+    font-family:'Yatra One', cursive;
+    font-size:22px;
+    margin:4px 0 6px;
+    color:var(--maroon-deep);
+  }
+  .chapter-card p{
+    margin:0 0 10px;
+    font-size:14.5px;
+    color:#5a4633;
+    line-height:1.5;
+  }
+  .chapter-meta{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:13px;
+    color:var(--maroon);
+    font-weight:600;
+  }
+  .chapter-meta .go{
+    background:var(--maroon);
+    color:var(--parchment);
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+  }
+  .partial-tag{
+    display:inline-block;
+    margin-top:8px;
+    font-size:12px;
+    background:rgba(164,57,47,0.14);
+    color:var(--rust);
+    padding:3px 9px;
+    border-radius:6px;
+    font-weight:600;
+  }
+
+  footer.note{
+    margin-top:26px;
+    text-align:center;
+    font-size:12.5px;
+    color:#7a6a52;
+    line-height:1.6;
+  }
+
+  /* ---------- Quiz screen ---------- */
+  .quiz-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6px;
+  }
+  .back-btn{
+    background:none;
+    border:none;
+    color:var(--maroon);
+    font-family:'Mukta',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    padding:6px 0;
+  }
+  .score-pill{
+    background:var(--maroon-deep);
+    color:var(--parchment);
+    font-size:13px;
+    font-weight:600;
+    padding:5px 12px;
+    border-radius:999px;
+  }
+  .progress-track{
+    width:100%;
+    height:6px;
+    background:rgba(122,31,43,0.15);
+    border-radius:4px;
+    margin:10px 0 20px;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--gold), var(--maroon));
+    border-radius:4px;
+    transition:width .35s ease;
+  }
+  .chapter-title-small{
+    font-family:'Yatra One', cursive;
+    font-size:19px;
+    color:var(--maroon-deep);
+    margin:0 0 2px;
+  }
+  .q-count{
+    font-size:13px;
+    color:#7a6a52;
+    margin-bottom:14px;
+  }
+  .question-card{
+    background:#fffaf0;
+    border:1px solid rgba(122,31,43,0.2);
+    border-radius:14px;
+    padding:20px 18px;
+    box-shadow:var(--shadow);
+  }
+  .question-text{
+    font-size:18px;
+    font-weight:600;
+    line-height:1.55;
+    margin:0 0 16px;
+    color:var(--ink);
+  }
+  .options{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .option{
+    text-align:right;
+    direction:rtl;
+    background:var(--parchment);
+    border:1.5px solid rgba(122,31,43,0.3);
+    border-radius:10px;
+    padding:12px 14px;
+    font-size:15.5px;
+    font-family:'Mukta',sans-serif;
+    color:var(--ink);
+    cursor:pointer;
+    line-height:1.5;
+    transition:background .15s ease, border-color .15s ease, transform .1s ease;
+  }
+  .option:active{ transform:scale(0.99); }
+  .option.correct{
+    background:rgba(75,107,79,0.18);
+    border-color:var(--sage);
+    color:#2f4a33;
+    font-weight:700;
+  }
+  .option.wrong{
+    background:rgba(164,57,47,0.15);
+    border-color:var(--rust);
+    color:#6b241c;
+    font-weight:700;
+  }
+  .option.disabled{ pointer-events:none; opacity:0.85; }
+
+  .explain{
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:10px;
+    background:rgba(184,134,11,0.12);
+    border-right:4px solid var(--gold);
+    font-size:14px;
+    line-height:1.6;
+    color:#4a3a1e;
+    display:none;
+  }
+  .explain.show{ display:block; }
+
+  .next-btn{
+    margin-top:16px;
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:10px;
+    background:var(--maroon);
+    color:var(--parchment);
+    font-family:'Mukta',sans-serif;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    display:none;
+  }
+  .next-btn.show{ display:block; }
+  .next-btn:active{ background:var(--maroon-deep); }
+
+  /* ---------- Result screen ---------- */
+  .result-wrap{ text-align:center; padding-top:10px; }
+  .lotus-holder{ margin:10px auto 8px; width:180px; height:180px; }
+  .result-title{
+    font-family:'Yatra One', cursive;
+    font-size:26px;
+    color:var(--maroon-deep);
+    margin:6px 0 4px;
+  }
+  .result-score{
+    font-size:17px;
+    color:#5a4633;
+    margin-bottom:4px;
+  }
+  .result-msg{
+    font-size:14.5px;
+    color:#6b5b42;
+    max-width:400px;
+    margin:0 auto 22px;
+    line-height:1.6;
+  }
+  .result-actions{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .btn{
+    padding:11px 20px;
+    border-radius:999px;
+    border:1.5px solid var(--maroon);
+    background:transparent;
+    color:var(--maroon);
+    font-family:'Mukta',sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+  .btn.primary{
+    background:var(--maroon);
+    color:var(--parchment);
+  }
+
+  .petal{ transition: fill 0.5s ease, opacity 0.5s ease; }
+
+  @media (prefers-reduced-motion: reduce){
+    .chapter-card, .option, .progress-fill, .petal{ transition:none !important; }
+  }
+
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="site">
+    <div class="eyebrow">जैन कथा-साहित्य</div>
+    <h1>जिनवाणी प्रश्नोत्तरी</h1>
+    <p class="sub">तीर्थंकर-चरित्र एवं सम्यक्त्व कथाओं पर आधारित प्रश्नोत्तरी</p>
+  </header>
+
+  <!-- HOME SCREEN -->
+  <div id="home-screen">
+    <div class="chapter-grid" id="chapter-grid"></div>
+    <footer class="note">
+      प्रत्येक अध्याय की कथा में दिए गए हर महत्वपूर्ण प्रसंग, नाम व घटना पर आधारित प्रश्न हैं।<br>
+      "चक्रवर्ती सनत्कुमार" अध्याय की केवल आरंभिक पंक्तियाँ उपलब्ध थीं, अतः वह अध्याय आंशिक है।
+    </footer>
+  </div>
+
+  <!-- QUIZ SCREEN -->
+  <div id="quiz-screen" class="hidden">
+    <div class="quiz-header">
+      <button class="back-btn" id="back-btn">← अध्याय सूची</button>
+      <span class="score-pill" id="score-pill">स्कोर: 0</span>
+    </div>
+    <div class="chapter-title-small" id="quiz-chapter-title"></div>
+    <div class="q-count" id="quiz-progress-text"></div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+
+    <div class="question-card">
+      <p class="question-text" id="question-text"></p>
+      <div class="options" id="options-holder"></div>
+      <div class="explain" id="explain-box"></div>
+      <button class="next-btn" id="next-btn">अगला प्रश्न →</button>
+    </div>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="result-screen" class="hidden">
+    <div class="result-wrap">
+      <div class="lotus-holder">
+        <svg viewBox="0 0 100 100" width="180" height="180" id="lotus-svg">
+          <!-- 8 petals around center, drawn via JS-friendly groups -->
+          <g id="petal-group"></g>
+          <circle cx="50" cy="50" r="9" fill="#b8860b"/>
+        </svg>
+      </div>
+      <div class="result-title" id="result-title"></div>
+      <div class="result-score" id="result-score"></div>
+      <p class="result-msg" id="result-msg"></p>
+      <div class="result-actions">
+        <button class="btn primary" id="retry-btn">इसी अध्याय को दोबारा करें</button>
+        <button class="btn" id="home-btn">अन्य अध्याय चुनें</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============ DATA ============ */
+const chapters = [
+  {
+    id:1,
+    title:"भगवान अजितनाथ",
+    subtitle:"निमित्त और वैराग्य — पूर्वभव की गाथा",
+    desc:"राजा विमलवाहन के वैराग्य और आचार्य अरिदमन की कथा, जिससे अजितनाथ का पूर्वभव जुड़ा है।",
+    partial:false,
+    questions:[
+      {q:"जैन धर्म के दूसरे तीर्थंकर कौन थे?", o:["भगवान अजितनाथ","भगवान शांतिनाथ","भगवान महावीर","भगवान श्रेयांसनाथ"], a:0, e:"जैन धर्म के दूसरे तीर्थंकर भगवान श्री अजितनाथ हैं।"},
+      {q:"अजितनाथ के पूर्वभव में सुसीमा नगरी जम्बूद्वीप के किस क्षेत्र में स्थित थी?", o:["भरत क्षेत्र","महाविदेह क्षेत्र","ऐरावत क्षेत्र","कुरु क्षेत्र"], a:1, e:"सुसीमा नगरी जम्बूद्वीप के महाविदेह क्षेत्र में स्थित थी।"},
+      {q:"सुसीमा नगरी किस विजय (प्रांत) में स्थित थी?", o:["वत्स","कच्छ","पद्म","वप्र"], a:0, e:"यह नगरी वत्स नामक विजय में थी।"},
+      {q:"सुसीमा नगरी किस महानदी के दक्षिणी तट पर बसी थी?", o:["सीतोदा नदी","गंगा नदी","सीता महानदी","शिवा नदी"], a:2, e:"सुसीमा नगरी सीता महानदी के दक्षिणी तट पर थी।"},
+      {q:"सुसीमा नगरी के राजा कौन थे?", o:["विमलवाहन","अरिदमन","अश्वसेन","प्रजापति"], a:0, e:"राजा विमलवाहन महाप्रतापी, न्यायप्रिय और धर्मपरायण थे।"},
+      {q:"राजा विमलवाहन के उद्यान में किस महान तपस्वी आचार्य का शुभागमन हुआ?", o:["आचार्य धर्मघोष","आचार्य अरिदमन","आचार्य हस्ती","आचार्य सुलोचन"], a:1, e:"आचार्य श्री अरिदमन का शुभागमन हुआ था।"},
+      {q:"राजा विमलवाहन ने आचार्यश्री से क्या प्रश्न पूछा?", o:["मोक्ष कैसे मिलता है","संसार से विरक्ति किस निमित्त से हुई","सम्यक्त्व क्या है","तीर्थंकर कौन बनता है"], a:1, e:"राजा ने पूछा कि आपको संसार से विरक्ति किस निमित्त से हुई।"},
+      {q:"आचार्यश्री के अनुसार विज्ञ विचारक के लिए संसार में पग-पग पर क्या प्रस्तुत होते रहते हैं?", o:["सुखदायक अवसर","वैराग्योत्पादक निमित्त","धन-संपत्ति के साधन","मोह-ममत्व के कारण"], a:1, e:"संसार में विज्ञ विचारक के लिए वैराग्योत्पादक निमित्त सदा प्रस्तुत होते रहते हैं।"},
+      {q:"राजा बनने के बाद अरिदमन (तब राजा) ने क्या निश्चय किया था?", o:["तपस्या करने का","दिग्विजय करने का","विवाह करने का","नगर बसाने का"], a:1, e:"सिंहासन पर आरूढ़ होने के कुछ समय बाद उन्होंने दिग्विजय का निश्चय किया।"},
+      {q:"विजय-यात्रा के दौरान उन्होंने कैसा उद्यान देखा था?", o:["उजड़ा हुआ उद्यान","नंदनवन के समान रमणीय उद्यान","कांटों से भरा वन","सूखा हुआ मैदान"], a:1, e:"उन्होंने नंदनवन के समान एक अति रमणीय उद्यान देखा था।"},
+      {q:"दिग्विजय पूरी करके लौटते समय वही उद्यान कैसा मिला?", o:["पहले से भी सुंदर","पूर्णतः विनष्ट और उजड़ा हुआ","वैसा ही यथावत","जलकर राख हो चुका"], a:1, e:"लौटने पर वह उद्यान पूर्णतः विनष्ट और उजड़ा हुआ मिला।"},
+      {q:"उजड़े हुए वृक्षों की तुलना किससे की गई?", o:["सूखी लकड़ी से","ठूँठ प्रेतों से","पत्थर की मूर्तियों से","बादलों से"], a:1, e:"घने वृक्षों की जगह खड़े ठूँठ प्रेतों के समान भयावह लग रहे थे।"},
+      {q:"उद्यान की दुर्दशा देखकर उनके मन में संसार कैसा प्रतीत होने लगा?", o:["स्वर्ग समान","अग्निकुंड के समान दाहक","शांत सरोवर समान","खाली मैदान समान"], a:1, e:"संसार एक विशाल अग्निकुंड के समान दाहक प्रतीत होने लगा।"},
+      {q:"इस वैराग्य के बाद उन्होंने क्या ग्रहण किया?", o:["राजपाट का विस्तार","श्रमणधर्म की दीक्षा","नया विवाह","युद्ध की तैयारी"], a:1, e:"उन्होंने सब कुछ छोड़कर श्रमणधर्म की दीक्षा ग्रहण कर ली।"},
+      {q:"आचार्य अरिदमन का प्रवचन सुनकर राजा विमलवाहन ने क्या किया?", o:["युद्ध की घोषणा की","पुत्र को राज्यभार सौंपकर श्रमणधर्म स्वीकार किया","राज्य का विस्तार किया","आचार्य को राज्य से निकाल दिया"], a:1, e:"विमलवाहन ने पुत्र को राज्यभार सौंपकर श्रमणधर्म स्वीकार कर लिया।"},
+      {q:"मुनि बनने के बाद विमलवाहन ने कितनी समिति और कितनी गुप्ति की साधना की?", o:["तीन समिति, पाँच गुप्ति","पाँच समिति, तीन गुप्ति","चार समिति, चार गुप्ति","दो समिति, दो गुप्ति"], a:1, e:"उन्होंने पाँच समिति और तीन गुप्ति की विशुद्ध साधना की।"},
+      {q:"उत्कट आराधना से विमलवाहन ने कौन-सा कर्म उपार्जित किया?", o:["चक्रवर्ती पद कर्म","तीर्थंकर नाम गोत्रकर्म","वासुदेव पद कर्म","इंद्र पद कर्म"], a:1, e:"उन्होंने तीर्थंकर नाम गोत्रकर्म का उपार्जन किया।"},
+      {q:"अनशनपूर्वक आयु पूर्णकर विमलवाहन किस अनुत्तरविमान में देव बने?", o:["विजय नामक अनुत्तरविमान","जयंत नामक अनुत्तरविमान","सर्वार्थसिद्धि विमान","अपराजित विमान"], a:0, e:"वे विजय नामक अनुत्तरविमान में देव रूप में उत्पन्न हुए।"},
+      {q:"देव रूप में उनकी आयु कितने सागर की थी?", o:["तेईस सागर","तैंतीस सागर","तिरेपन सागर","तेरह सागर"], a:1, e:"उनकी देव आयु तैंतीस सागर की थी।"},
+      {q:"देवायुष्य पूर्ण कर विमलवाहन का जीव किसके रूप में जन्मा?", o:["भगवान शांतिनाथ","भगवान अजितनाथ","भगवान महावीर","भगवान श्रेयांसनाथ"], a:1, e:"देवायुष्य पूर्ण कर वे जैन धर्म के दूसरे तीर्थंकर भगवान अजितनाथ के रूप में जन्मे।"}
+    ]
+  },
+  {
+    id:2,
+    title:"सम्यक्त्व का प्रभाव",
+    subtitle:"शुद्धभट्ट और सुलक्षणा की कथा",
+    desc:"कौशाम्बी के समवसरण से आरंभ होकर शालिग्राम के ब्राह्मण दंपति की सम्यक्त्व-गाथा।",
+    partial:false,
+    questions:[
+      {q:"भगवान अजितनाथ किस नगरी के बाहर उद्यान में पधारे थे?", o:["कौशाम्बी","पोतनपुर","हस्तिनापुर","शालिग्राम"], a:0, e:"भगवान कौशाम्बी नगरी के बाहर उत्तर दिशा के उद्यान में पधारे थे।"},
+      {q:"भगवान किस वृक्ष के नीचे विराजमान होकर देशना दे रहे थे?", o:["बरगद वृक्ष","अशोक वृक्ष","पीपल वृक्ष","आम वृक्ष"], a:1, e:"प्रभु अशोक वृक्ष के नीचे विशाल सिंहासन पर विराजमान थे।"},
+      {q:"समवसरण में भगवान से प्रश्न पूछने कौन आया था?", o:["एक राजा","एक ब्राह्मण अपनी पत्नी के साथ","एक गणधर","एक व्यापारी"], a:1, e:"एक ब्राह्मण अपनी पत्नी के साथ समवसरण में आया था।"},
+      {q:"भगवान ने ब्राह्मण के प्रश्न का क्या उत्तर दिया?", o:["यह भाग्य का खेल है","यह सम्यक्त्व का प्रभाव है","यह कर्म का बंधन है","यह तप का फल है"], a:1, e:"प्रभु ने कहा — यह सम्यक्त्व का प्रभाव है।"},
+      {q:"सम्यक्त्व के प्रभाव से क्या शांत हो जाते हैं?", o:["वैर","युद्ध","व्यापार","विवाह"], a:0, e:"सम्यक्त्व के प्रभाव से वैर शांत हो जाते हैं।"},
+      {q:"सम्यक्त्व की उत्कृष्ट उपासना से प्राणी अंततः क्या प्राप्त कर सकता है?", o:["राजपद","तीर्थंकर पद","चक्रवर्ती पद","इंद्र पद"], a:1, e:"उत्कृष्ट उपासना से प्राणी समस्त कर्म-समूह भस्म कर तीर्थंकर पद तक प्राप्त कर सकता है।"},
+      {q:"शालिग्राम गाँव के ब्राह्मण दामोदर की पत्नी का नाम क्या था?", o:["सुलक्षणा","सीमा","विपुला","सहदेवी"], a:1, e:"दामोदर की पत्नी का नाम सीमा था।"},
+      {q:"दामोदर और सीमा के पुत्र का नाम क्या था?", o:["सिद्धभट्ट","शुद्धभट्ट","दृढ़भट्ट","विशुद्धभट्ट"], a:1, e:"उनके पुत्र का नाम शुद्धभट्ट था।"},
+      {q:"शुद्धभट्ट का विवाह किस ब्राह्मण की पुत्री सुलक्षणा से हुआ?", o:["सिद्धभट्ट","दामोदर","धर्मघोष","अरिदमन"], a:0, e:"शुद्धभट्ट का विवाह सिद्धभट्ट ब्राह्मण की बेटी सुलक्षणा से हुआ था।"},
+      {q:"माता-पिता के स्वर्गवास और धन नष्ट होने पर दुःखी शुद्धभट्ट ने क्या किया?", o:["संन्यास ले लिया","बिना बताए परदेश चला गया","दूसरा विवाह कर लिया","राजा की सेवा में चला गया"], a:1, e:"वह दरिद्रता से दुःखी होकर चुपचाप पत्नी को बिना बताए परदेश चला गया।"},
+      {q:"सुलक्षणा के घर वर्षावास हेतु किस प्रवर्तिनी (साध्वी) ने स्थान माँगा?", o:["विपुला","सहदेवी","सुसीमा","सीमा"], a:0, e:"विपुला नामक प्रवर्तिनी दो साध्वियों के साथ आई थी।"},
+      {q:"साध्वियों के उपदेश सुनकर सुलक्षणा के अंतस्तल में क्या प्रकट हुआ?", o:["वैराग्य","सम्यक्त्व","क्रोध","भय"], a:1, e:"मिथ्यात्व की परतें दूर होने पर उसके अंतस्तल में सम्यक्त्व प्रकट हुआ।"},
+      {q:"वर्षावास के बाद साध्वियों ने सुलक्षणा को कौन-सा व्रत दिलाकर श्राविका बनाया?", o:["पाँच महाव्रत","बारह अणुव्रत","आठ मूलगुण","तीन गुप्ति"], a:1, e:"साध्वियों ने बारह अणुव्रतों का नियम दिलाकर उसे श्राविका बनाया।"},
+      {q:"सम्यक्त्व के पाँच लक्षणों में निम्न में से कौन शामिल नहीं है?", o:["शम","संवेग","क्षमा","अनुकंपा"], a:2, e:"सम्यक्त्व के पाँच लक्षण हैं — शम, संवेग, निर्वेद, अनुकंपा और आस्तिक्य। 'क्षमा' इनमें शामिल नहीं है।"},
+      {q:"सम्यक्त्व का दूसरा नाम क्या है?", o:["सम्यग्ज्ञान","सम्यग्दर्शन","सम्यक्चारित्र","सम्यक्तप"], a:1, e:"सम्यक्त्व का दूसरा नाम सम्यग्दर्शन है।"},
+      {q:"सम्यक्त्व के पाँच भूषणों में से एक कौन-सा है?", o:["स्वधर्मी बंधुओं को सम्यक्त्व में स्थिर रखना","धन संचय करना","राज्य विस्तार करना","युद्ध टालना"], a:0, e:"स्वधर्मी बंधुओं को सम्यक्त्व में स्थिर रखना सम्यक्त्व के पाँच भूषणों में से एक है, साथ ही प्रभावना, भक्ति, जिनशासन-कुशलता और चतुर्विध तीर्थ सेवा।"},
+      {q:"गाँव के अन्य ब्राह्मणों ने शुद्धभट्ट-सुलक्षणा की निंदा क्यों की?", o:["निर्धन होने पर","परंपरागत धर्म छोड़कर श्रावक बनने पर","पुत्र न होने पर","गाँव छोड़ने पर"], a:1, e:"वे दोनों परंपरागत धर्म छोड़कर श्रावकधर्म पालने लगे थे, इसी कारण निंदा हुई।"},
+      {q:"सर्दी के दिनों में शुद्धभट्ट अपने पुत्र को लेकर कहाँ गया था?", o:["राजदरबार में","धर्म-अग्निष्टिका में","मंदिर में","नदी तट पर"], a:1, e:"वह पुत्र को लेकर धर्म-अग्निष्टिका के पास गया, जहाँ ब्राह्मण अग्नि ताप रहे थे।"},
+      {q:"वहाँ बैठे ब्राह्मणों ने शुद्धभट्ट का उपहास करते हुए क्या कहा?", o:["तुम गरीब हो, यहाँ मत आओ","तुम श्रावक हो, हमारे बीच स्थान नहीं","तुम्हारा पुत्र अशुभ है","तुम विदेशी हो"], a:1, e:"उन्होंने कहा कि तुम श्रावक हो, अतः हमारे बीच तुम्हारे लिए कोई स्थान नहीं है।"},
+      {q:"क्रुद्ध होकर शुद्धभट्ट ने अपने पुत्र को कहाँ फेंक दिया?", o:["नदी में","अंगारों से भरी अग्नि-वेदी में","कुएँ में","जंगल में"], a:1, e:"उसने प्रतिज्ञा कहकर पुत्र को अंगारों से भरी विशाल अग्नि-वेदी में फेंक दिया।"},
+      {q:"अग्नि की जगह क्या प्रकट होकर बालक की रक्षा हुई?", o:["जल की धारा","विशाल कमल पुष्प","स्वर्ण सिंहासन","कोमल बादल"], a:1, e:"अग्नि तिरोहित होकर वहाँ एक विशाल विकसित कमल पुष्प प्रकट हो गया, जिस पर बालक खिलखिला रहा था।"},
+      {q:"अग्नि को तिरोहित कर कमल प्रकट करने वाली देवी किस जाति की थी?", o:["यक्ष जाति","व्यंतर जाति","किन्नर जाति","वैमानिक देव जाति"], a:1, e:"यह चमत्कार व्यंतर जाति की एक देवी ने किया था, जो संयोगवश वहीं थी।"},
+      {q:"वह देवी पूर्वजन्म में क्या थी और व्यंतरी क्यों बनी?", o:["राजकुमारी थी, पाप के कारण","साध्वी थी, श्रमणधर्म की विराधना के कारण","रानी थी, क्रोध के कारण","सामान्य स्त्री थी, अज्ञान के कारण"], a:1, e:"वह पूर्वजन्म में एक साध्वी थी और श्रमणधर्म की विराधना के कारण मरकर व्यंतरी बनी थी।"},
+      {q:"घर लौटने पर सुलक्षणा ने पति के इस कृत्य पर क्या कहा?", o:["आपने बहुत साहस दिखाया","आपने अच्छा नहीं किया","आपने सही किया","कुछ नहीं कहा"], a:1, e:"सुलक्षणा ने कहा कि आपने अच्छा नहीं किया, अगर पुत्र जल जाता तो क्या होता।"},
+      {q:"अंत में शुद्धभट्ट और सुलक्षणा ने क्या ग्रहण किया?", o:["केवल गृहस्थ धर्म","श्रमणधर्म की दीक्षा, अंततः मोक्ष प्राप्त किया","राजपद","वनवास"], a:1, e:"दोनों ने श्रमणधर्म की दीक्षा ग्रहण की और अंततः समस्त कर्मसमूह नष्ट कर मोक्ष प्राप्त किया।"}
+    ]
+  },
+  {
+    id:3,
+    title:"वासुदेव त्रिपृष्ठ",
+    subtitle:"अश्वग्रीव-वध की गाथा",
+    desc:"प्रथम वासुदेव त्रिपृष्ठ के पराक्रम और सम्यक्त्व-भंग की मार्मिक कथा।",
+    partial:false,
+    questions:[
+      {q:"जैन धर्म के ग्यारहवें तीर्थंकर कौन थे?", o:["भगवान अजितनाथ","भगवान श्रेयांसनाथ","भगवान शांतिनाथ","भगवान महावीर"], a:1, e:"जैन धर्म के ग्यारहवें तीर्थंकर भगवान श्रेयांसनाथ थे।"},
+      {q:"भगवान श्रेयांसनाथ विचरण करते हुए किस नगर पधारे?", o:["कौशाम्बी","पोतनपुर","हस्तिनापुर","शालिग्राम"], a:1, e:"भगवान श्रेयांसनाथ पोतनपुर नगर पधारे थे।"},
+      {q:"भगवान के आगमन की शुभ सूचना राजपुरुष ने सबसे पहले किसे दी?", o:["राजा प्रजापति को","प्रथम वासुदेव त्रिपृष्ठ को","बलदेव अचल को","अश्वग्रीव को"], a:1, e:"यह शुभ सूचना सबसे पहले प्रथम वासुदेव त्रिपृष्ठ को दी गई थी।"},
+      {q:"त्रिपृष्ठ ने प्रसन्न होकर संदेशवाहक को कितनी मुद्राओं से पुरस्कृत किया?", o:["दस करोड़","बारह करोड़","पंद्रह करोड़","बीस करोड़"], a:1, e:"त्रिपृष्ठ ने संदेशवाहक को बारह करोड़ मुद्राओं से पुरस्कृत किया।"},
+      {q:"त्रिपृष्ठ अपने किस भाई के साथ भगवान के चरण-वंदन को गए?", o:["छोटे भाई अचल","बड़े भाई अचल","पिता प्रजापति","मित्र अश्वग्रीव"], a:1, e:"वे अपने बड़े भाई प्रथम बलदेव अचल के साथ भगवान के चरण-वंदन को गए।"},
+      {q:"भगवान की सम्यक्त्वसुधा बरसाने वाली वाणी सुनकर दोनों भाइयों ने क्या धारण किया?", o:["दीक्षा","सम्यक्त्व","राज्य","युद्ध व्रत"], a:1, e:"दोनों भाइयों ने भगवान की वाणी सुनकर सम्यक्त्व धारण किया।"},
+      {q:"भगवान महावीर के पूर्वभवी जीव मरीचि ने किस रूप में जन्म लिया था?", o:["अश्वग्रीव के रूप में","त्रिपृष्ठ के रूप में","बलदेव अचल के रूप में","प्रजापति के रूप में"], a:1, e:"भगवान महावीर के पूर्वभवी मरीचि के जीव ने ही त्रिपृष्ठ के रूप में जन्म लिया था।"},
+      {q:"प्रथम प्रतिवासुदेव कौन था?", o:["प्रजापति","अश्वग्रीव","धर्मघोष","शय्यापाल"], a:1, e:"प्रथम प्रतिवासुदेव अश्वग्रीव था।"},
+      {q:"अश्वग्रीव किस बात से चिंतातुर हो गया था?", o:["युद्ध हारने से","अपने संहारक के जन्म की भविष्यवाणी सुनकर","राज्य छिन जाने से","पुत्र न होने से"], a:1, e:"निमित्तज्ञों की भविष्यवाणी से अपने संहारक के जन्म का पता चलने पर वह चिंतातुर हो गया था।"},
+      {q:"शालिखेत में किसका भयंकर आतंक फैला था?", o:["एक डाकू का","एक सिंह का","बाढ़ का","महामारी का"], a:1, e:"शालिखेत में एक सिंह (शेर) का भयंकर आतंक छाया हुआ था।"},
+      {q:"शेर से रक्षा के लिए अश्वग्रीव ने किसे शालिखेत भेजने का आदेश दिया?", o:["त्रिपृष्ठ को","राजा प्रजापति को","बलदेव अचल को","सेनापति को"], a:1, e:"अश्वग्रीव ने राजा प्रजापति को शालिखेत की शेर से रक्षा करने का आदेश भेजा।"},
+      {q:"त्रिपृष्ठ ने अपने पिता से क्या माँगा?", o:["राज्य की आज्ञा","शेर को मारने की आज्ञा","विवाह की आज्ञा","युद्ध टालने की आज्ञा"], a:1, e:"त्रिपृष्ठ ने साहसपूर्वक शेर को समाप्त करने की आज्ञा माँगी।"},
+      {q:"शेर के पास हथियार न होने पर त्रिपृष्ठ ने क्या किया?", o:["कवच पहन लिया","अपना हथियार फेंक दिया","सैनिकों को बुलाया","पीछे हट गए"], a:1, e:"चूँकि शेर के पास हथियार नहीं था, त्रिपृष्ठ ने भी अपना हथियार फेंक दिया।"},
+      {q:"त्रिपृष्ठ ने शेर को किस तरह मारा?", o:["तलवार से वार करके","विद्युत वेग से जबड़े पकड़कर चीर डाला","बाण चलाकर","अग्नि से जलाकर"], a:1, e:"विद्युत वेग से लपककर उन्होंने शेर के दोनों जबड़ों को पकड़कर पुराने बांस की तरह चीर डाला।"},
+      {q:"घायल सिंह को सारथी ने क्या समझाया?", o:["तुम कमजोर थे","तुम पशुओं में राजा हो, यह युवक मनुष्यों में राजा है","यह ईश्वर की इच्छा थी","तुम्हारी गलती थी"], a:1, e:"सारथी ने कहा — तुम पशुओं में राजा हो, यह तेजस्वी युवक मनुष्यों में राजा है, तुम छोटे व्यक्ति के हाथ नहीं मारे जा रहे।"},
+      {q:"अश्वग्रीव ने त्रिपृष्ठ को मारने के लिए क्या छल रचा?", o:["सीधे युद्ध की घोषणा","सम्मानित करने के बहाने बुलाकर छल-बल से मरवाने का","विष देने का","बंदी बनाने का"], a:1, e:"उसने सम्मानित करने के बहाने अपने यहाँ बुलाकर छल-बल से दोनों भाइयों को मरवाने का निश्चय किया।"},
+      {q:"त्रिपृष्ठ ने अश्वग्रीव के निमंत्रण के उत्तर में क्या कहला भेजा?", o:["हम अवश्य आएंगे","राजा एक शेर को भी नहीं मार सका, हम पुरस्कार नहीं लेंगे","हमें डर लगता है","हम क्षमा माँगते हैं"], a:1, e:"त्रिपृष्ठ ने कहला भेजा कि राजा एक शेर को भी नहीं मार सका, अतः हम कोई पुरस्कार लेने को तैयार नहीं।"},
+      {q:"इस उत्तर से क्रुद्ध होकर अश्वग्रीव ने क्या किया?", o:["क्षमा माँग ली","सेना लेकर प्रजापति पर चढ़ाई कर दी","राज्य छोड़ दिया","संधि प्रस्ताव भेजा"], a:1, e:"अश्वग्रीव तिलमिला उठा और सेना लेकर प्रजापति पर चढ़ाई कर दी।"},
+      {q:"अनावश्यक नरसंहार रोकने के लिए त्रिपृष्ठ ने क्या प्रस्ताव रखा?", o:["संधि का","द्वंद्वयुद्ध का","आत्मसमर्पण का","विवाह गठबंधन का"], a:1, e:"त्रिपृष्ठ ने अश्वग्रीव को द्वंद्वयुद्ध के लिए ललकारा।"},
+      {q:"द्वंद्वयुद्ध में अंततः कौन विजयी हुआ?", o:["अश्वग्रीव","वासुदेव त्रिपृष्ठ","बलदेव अचल","युद्ध अनिर्णीत रहा"], a:1, e:"भयंकर द्वंद्वयुद्ध में प्रतिवासुदेव अश्वग्रीव, वासुदेव त्रिपृष्ठ द्वारा मारा गया।"},
+      {q:"विजय के बाद त्रिपृष्ठ ने किस पर आधिपत्य कर लिया?", o:["पूरे भरत पर","अर्ध-भरत पर","महाविदेह पर","ऐरावत पर"], a:1, e:"त्रिपृष्ठ ने अर्ध-भरत पर आधिपत्य कर लिया।"},
+      {q:"त्रिपृष्ठ ने शय्यापाल को सोते समय क्या आदेश दिया था?", o:["रातभर संगीत चलाते रहना","नींद आने पर संगीत बंद कराना","पहरा देना","दरवाजा बंद रखना"], a:1, e:"त्रिपृष्ठ ने आदेश दिया था कि नींद आने पर संगीत बंद करा दिया जाए।"},
+      {q:"शय्यापाल आदेश का पालन क्यों भूल गया?", o:["वह सो गया था","संगीत उसे बहुत कर्णप्रिय लगा","उसे आदेश याद नहीं रहा","वह वहाँ था ही नहीं"], a:1, e:"मधुर संगीत की मस्ती में शय्यापाल त्रिपृष्ठ के आदेश का पालन करना भूल गया।"},
+      {q:"क्रुद्ध त्रिपृष्ठ ने शय्यापाल को किस क्रूर तरीके से मार डाला?", o:["तलवार से","कानों में गरम शीशा डलवाकर","जहर देकर","कैद करके भूखा रखकर"], a:1, e:"त्रिपृष्ठ ने सेवकों से शय्यापाल के कानों में गरम-गरम शीशा डलवाया, जिससे वह तड़पकर मर गया।"},
+      {q:"इस क्रूर कर्म का त्रिपृष्ठ पर क्या परिणाम हुआ?", o:["कुछ नहीं, वह निर्दोष रहा","सम्यक्त्व भाव खंडित हुआ, नरकायु का बंध हुआ","उसे राज्य से निकाल दिया गया","उसने तुरंत प्रायश्चित कर लिया"], a:1, e:"इस क्रूर कर्म से त्रिपृष्ठ का सम्यक्त्व भाव खंडित हो गया और उसने नरकायु का बंध कर लिया।"},
+      {q:"त्रिपृष्ठ मरणोपरांत कहाँ गया?", o:["पहली नरक में","सातवीं नरक में","स्वर्ग में","मोक्ष में"], a:1, e:"चौरासी लाख वर्ष की आयु भोगकर त्रिपृष्ठ सातवीं नरक का अधिकारी बना।"},
+      {q:"भाई की मृत्यु का समाचार सुनकर बलदेव अचल पर क्या प्रभाव पड़ा?", o:["उन्हें कोई फर्क नहीं पड़ा","शोकाकुल होकर विलाप करते मूर्च्छित हो गए","उन्होंने युद्ध की घोषणा की","वे प्रसन्न हुए"], a:1, e:"भ्रातृप्रेम के कारण अचल शोकाकुल होकर विलाप करते हुए मूर्च्छित हो गए।"},
+      {q:"मूर्च्छा दूर होने पर अचल ने किस आचार्य से जिनदीक्षा ग्रहण की?", o:["आचार्य अरिदमन से","आचार्य धर्मघोष से","आचार्य हस्ती से","आचार्य सुलोचन से"], a:1, e:"संसार की असारता जानकर अचल ने आचार्य धर्मघोष से जिनदीक्षा ग्रहण की।"},
+      {q:"तप-संयम से कर्मों का क्षय कर अचल ने अंततः क्या प्राप्त किया?", o:["राज्यपद","सिद्ध, बुद्ध और मुक्त पद","देवपद","चक्रवर्ती पद"], a:1, e:"तप-संयम से सकल कर्मों का क्षय कर वे सिद्ध, बुद्ध और मुक्त हो गए।"},
+      {q:"बलदेव अचल की कुल आयु कितनी थी?", o:["84 लाख वर्ष","85 लाख वर्ष","33 सागर","12 करोड़ वर्ष"], a:1, e:"बलदेव अचल की कुल आयु 85 लाख वर्ष की थी।"}
+    ]
+  },
+  {
+    id:4,
+    title:"चक्रवर्ती सनत्कुमार",
+    subtitle:"अध्याय आरंभ — आंशिक सामग्री",
+    desc:"अभी केवल अध्याय की आरंभिक पंक्तियाँ उपलब्ध हैं।",
+    partial:true,
+    questions:[
+      {q:"जम्बूद्वीप के भरत क्षेत्र में हस्तिनापुर नगर के शासक महाराज कौन थे?", o:["अश्वसेन","प्रजापति","विमलवाहन","दामोदर"], a:0, e:"हस्तिनापुर के शासक महाराज अश्वसेन थे।"},
+      {q:"महाराज अश्वसेन किन गुणों से संपन्न बताए गए हैं?", o:["केवल धन-वैभव से","शौर्य, शील आदि गुणों से","क्रोध और अहंकार से","केवल युद्धकला से"], a:1, e:"महाराज अश्वसेन शौर्य, शील आदि गुणों से संपन्न थे।"},
+      {q:"महाराज अश्वसेन की धर्मशीला रानी का नाम क्या था?", o:["सुलक्षणा","सहदेवी","सीमा","विपुला"], a:1, e:"उनकी धर्मशीला रानी का नाम सहदेवी था।"}
+    ]
+  }
+];
+
+/* ============ STATE ============ */
+let state = {
+  chapterId:null,
+  qIndex:0,
+  score:0,
+  answered:false
+};
+
+/* ============ SOUND (voice) ============ */
+let hindiVoice = null;
+function loadHindiVoice(){
+  const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+  hindiVoice = voices.find(v => v.lang === 'hi-IN') ||
+               voices.find(v => v.lang && v.lang.startsWith('hi')) ||
+               null;
+}
+if(window.speechSynthesis){
+  loadHindiVoice();
+  window.speechSynthesis.onvoiceschanged = loadHindiVoice;
+}
+function speak(text){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel(); // stop any previous speech
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'hi-IN';
+  if(hindiVoice) utter.voice = hindiVoice;
+  utter.rate = 1;
+  utter.pitch = 1;
+  window.speechSynthesis.speak(utter);
+}
+function playCorrectSound(){
+  speak('यह जवाब सही है');
+}
+function playWrongSound(){
+  speak('यह जवाब गलत है');
+}
+function playResultSound(pct){
+  if(pct >= 70){
+    speak('बहुत बढ़िया! आपने बहुत अच्छा किया');
+  } else if(pct >= 40){
+    speak('अच्छा प्रयास, थोड़ा और अभ्यास करें');
+  } else {
+    speak('कोई बात नहीं, कथा फिर से पढ़कर दोबारा प्रयास करें');
+  }
+}
+
+/* ============ ELEMENTS ============ */
+const homeScreen = document.getElementById('home-screen');
+const quizScreen = document.getElementById('quiz-screen');
+const resultScreen = document.getElementById('result-screen');
+const chapterGrid = document.getElementById('chapter-grid');
+
+/* ============ RENDER HOME ============ */
+function renderHome(){
+  chapterGrid.innerHTML = '';
+  chapters.forEach((ch, idx)=>{
+    const card = document.createElement('div');
+    card.className = 'chapter-card';
+    card.innerHTML = `
+      <div class="num">अध्याय ${idx+1}</div>
+      <h2>${ch.title}</h2>
+      <p>${ch.desc}</p>
+      <div class="chapter-meta">
+        <span>${ch.questions.length} प्रश्न</span>
+        <span class="go">आरंभ करें →</span>
+      </div>
+      ${ch.partial ? '<div class="partial-tag">आंशिक अध्याय</div>' : ''}
+    `;
+    card.addEventListener('click', ()=> startQuiz(ch.id));
+    chapterGrid.appendChild(card);
+  });
+}
+
+/* ============ QUIZ LOGIC ============ */
+function startQuiz(chapterId){
+  state = { chapterId, qIndex:0, score:0, answered:false };
+  homeScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  quizScreen.classList.remove('hidden');
+  renderQuestion();
+}
+
+function currentChapter(){
+  return chapters.find(c=>c.id===state.chapterId);
+}
+
+function renderQuestion(){
+  const ch = currentChapter();
+  const total = ch.questions.length;
+  const q = ch.questions[state.qIndex];
+  state.answered = false;
+
+  document.getElementById('quiz-chapter-title').textContent = ch.title;
+  document.getElementById('quiz-progress-text').textContent = `प्रश्न ${state.qIndex+1} / ${total}`;
+  document.getElementById('score-pill').textContent = `स्कोर: ${state.score}`;
+  document.getElementById('progress-fill').style.width = `${(state.qIndex/total)*100}%`;
+  document.getElementById('question-text').textContent = q.q;
+
+  const holder = document.getElementById('options-holder');
+  holder.innerHTML = '';
+  q.o.forEach((optText, i)=>{
+    const btn = document.createElement('div');
+    btn.className = 'option';
+    btn.textContent = optText;
+    btn.addEventListener('click', ()=> selectOption(i, btn));
+    holder.appendChild(btn);
+  });
+
+  const explainBox = document.getElementById('explain-box');
+  explainBox.classList.remove('show');
+  explainBox.textContent = '';
+
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.classList.remove('show');
+  nextBtn.textContent = (state.qIndex === total-1) ? 'परिणाम देखें →' : 'अगला प्रश्न →';
+}
+
+function selectOption(i, btnEl){
+  if(state.answered) return;
+  state.answered = true;
+
+  const ch = currentChapter();
+  const q = ch.questions[state.qIndex];
+  const allOptions = document.querySelectorAll('#options-holder .option');
+
+  allOptions.forEach((el, idx)=>{
+    el.classList.add('disabled');
+    if(idx === q.a) el.classList.add('correct');
+    else if(idx === i && i !== q.a) el.classList.add('wrong');
+  });
+
+  if(i === q.a){
+    state.score++;
+    playCorrectSound();
+  } else {
+    playWrongSound();
+  }
+
+  document.getElementById('score-pill').textContent = `स्कोर: ${state.score}`;
+
+  const explainBox = document.getElementById('explain-box');
+  explainBox.textContent = q.e;
+  explainBox.classList.add('show');
+
+  document.getElementById('next-btn').classList.add('show');
+}
+
+document.getElementById('next-btn').addEventListener('click', ()=>{
+  const ch = currentChapter();
+  if(state.qIndex < ch.questions.length - 1){
+    state.qIndex++;
+    renderQuestion();
+  } else {
+    showResult();
+  }
+});
+
+document.getElementById('back-btn').addEventListener('click', ()=>{
+  quizScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  homeScreen.classList.remove('hidden');
+});
+
+document.getElementById('home-btn').addEventListener('click', ()=>{
+  resultScreen.classList.add('hidden');
+  homeScreen.classList.remove('hidden');
+});
+
+document.getElementById('retry-btn').addEventListener('click', ()=>{
+  startQuiz(state.chapterId);
+});
+
+/* ============ RESULT + LOTUS ============ */
+function showResult(){
+  const ch = currentChapter();
+  const total = ch.questions.length;
+  const pct = Math.round((state.score/total)*100);
+
+  quizScreen.classList.add('hidden');
+  resultScreen.classList.remove('hidden');
+
+  document.getElementById('result-score').textContent = `${ch.title} — ${state.score} / ${total} सही (${pct}%)`;
+
+  let title, msg;
+  if(pct >= 90){ title = "सम्यक्त्व में सुदृढ़!"; msg = "अद्भुत! आपने कथा के हर प्रसंग को गहराई से आत्मसात किया है।"; }
+  else if(pct >= 70){ title = "श्रद्धा सुदृढ़ हो रही है"; msg = "बहुत अच्छा प्रयास — कुछ प्रसंगों को दोबारा पढ़ें और स्मरण पक्का करें।"; }
+  else if(pct >= 40){ title = "यात्रा जारी है"; msg = "अच्छी शुरुआत! कथा को एक बार फिर पढ़कर पुनः प्रयास करें।"; }
+  else { title = "पुनः अध्ययन आवश्यक"; msg = "कोई बात नहीं — कथा को ध्यान से पढ़ें और फिर से प्रयास करें, हर पाठ एक नया निमित्त है।"; }
+
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-msg').textContent = msg;
+
+  drawLotus(pct);
+  playResultSound(pct);
+}
+
+function drawLotus(pct){
+  const group = document.getElementById('petal-group');
+  group.innerHTML = '';
+  const petalCount = 8;
+  const filled = Math.max(1, Math.round((pct/100)*petalCount));
+  const cx = 50, cy = 50, rInner = 12, rOuter = 42;
+
+  for(let i=0;i<petalCount;i++){
+    const angle = (i/petalCount) * 2 * Math.PI - Math.PI/2;
+    const nextAngle = angle + (2*Math.PI/petalCount);
+    const midAngle = (angle+nextAngle)/2;
+
+    const tipX = cx + rOuter*Math.cos(midAngle);
+    const tipY = cy + rOuter*Math.sin(midAngle);
+    const baseX1 = cx + rInner*Math.cos(angle);
+    const baseY1 = cy + rInner*Math.sin(angle);
+    const baseX2 = cx + rInner*Math.cos(nextAngle);
+    const baseY2 = cy + rInner*Math.sin(nextAngle);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    const d = `M ${baseX1} ${baseY1} Q ${tipX} ${tipY} ${baseX2} ${baseY2} Q ${cx} ${cy} ${baseX1} ${baseY1} Z`;
+    path.setAttribute('d', d);
+    path.setAttribute('class','petal');
+    path.setAttribute('fill', i < filled ? '#a4392f' : 'rgba(122,31,43,0.12)');
+    path.setAttribute('stroke', i < filled ? '#7a1f2b' : 'rgba(122,31,43,0.25)');
+    path.setAttribute('stroke-width','0.6');
+    group.appendChild(path);
+  }
+}
+
+/* ============ INIT ============ */
+renderHome();
+</script>
+
+</body>
+</html>
