@@ -505,7 +505,8 @@ let state = {
   chapterId:null,
   qIndex:0,
   score:0,
-  answered:false
+  answered:false,
+  currentOptions:null
 };
 
 /* ============ SOUND (voice) ============ */
@@ -586,6 +587,15 @@ function currentChapter(){
   return chapters.find(c=>c.id===state.chapterId);
 }
 
+function shuffleOptions(q){
+  const optsWithFlag = q.o.map((text, i)=>({ text, correct: i === q.a }));
+  for(let i = optsWithFlag.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [optsWithFlag[i], optsWithFlag[j]] = [optsWithFlag[j], optsWithFlag[i]];
+  }
+  return optsWithFlag;
+}
+
 function renderQuestion(){
   const ch = currentChapter();
   const total = ch.questions.length;
@@ -598,12 +608,15 @@ function renderQuestion(){
   document.getElementById('progress-fill').style.width = `${(state.qIndex/total)*100}%`;
   document.getElementById('question-text').textContent = q.q;
 
+  const shuffled = shuffleOptions(q);
+  state.currentOptions = shuffled;
+
   const holder = document.getElementById('options-holder');
   holder.innerHTML = '';
-  q.o.forEach((optText, i)=>{
+  shuffled.forEach((opt, i)=>{
     const btn = document.createElement('div');
     btn.className = 'option';
-    btn.textContent = optText;
+    btn.textContent = opt.text;
     btn.addEventListener('click', ()=> selectOption(i, btn));
     holder.appendChild(btn);
   });
@@ -621,17 +634,18 @@ function selectOption(i, btnEl){
   if(state.answered) return;
   state.answered = true;
 
-  const ch = currentChapter();
-  const q = ch.questions[state.qIndex];
+  const shuffled = state.currentOptions;
+  const q = currentChapter().questions[state.qIndex];
   const allOptions = document.querySelectorAll('#options-holder .option');
+  const correctIndex = shuffled.findIndex(o => o.correct);
 
   allOptions.forEach((el, idx)=>{
     el.classList.add('disabled');
-    if(idx === q.a) el.classList.add('correct');
-    else if(idx === i && i !== q.a) el.classList.add('wrong');
+    if(idx === correctIndex) el.classList.add('correct');
+    else if(idx === i && i !== correctIndex) el.classList.add('wrong');
   });
 
-  if(i === q.a){
+  if(i === correctIndex){
     state.score++;
     playCorrectSound();
   } else {
