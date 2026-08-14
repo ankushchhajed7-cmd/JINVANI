@@ -320,6 +320,21 @@
   }
 
   .hidden{ display:none !important; }
+  .book-title-heading{
+    font-family:'Yatra One', cursive;
+    font-size:22px;
+    color:var(--maroon-deep);
+    margin:14px 0 14px;
+  }
+  .empty-book-msg{
+    text-align:center;
+    padding:40px 20px;
+    color:#7a6a52;
+    font-size:15px;
+    background:#fbf3de;
+    border-radius:14px;
+    border:1px solid rgba(122,31,43,0.15);
+  }
 </style>
 </head>
 <body>
@@ -332,16 +347,24 @@
     <p class="sub">तीर्थंकर-चरित्र एवं सम्यक्त्व कथाओं पर आधारित प्रश्नोत्तरी</p>
   </header>
 
-  <!-- HOME SCREEN -->
-  <div id="home-screen">
-    <div class="chapter-grid" id="chapter-grid"></div>
+  <!-- BOOK SCREEN -->
+  <div id="book-screen">
+    <div class="chapter-grid" id="book-grid"></div>
     <footer class="note">
-      प्रत्येक अध्याय की कथा में दिए गए हर महत्वपूर्ण प्रसंग, नाम व घटना पर आधारित प्रश्न हैं।<br>
-      कुल 8 अध्याय — सभी पूर्ण।
+      हर पुस्तक में उसके अध्यायों की कथा पर आधारित प्रश्नोत्तरी है। नई पुस्तकें और अध्याय समय-समय पर जुड़ते रहेंगे।
     </footer>
   </div>
 
+  <!-- HOME SCREEN (chapter list within a book) -->
+  <div id="home-screen" class="hidden">
+    <button class="back-btn" id="back-to-books-btn">← पुस्तक सूची</button>
+    <h2 class="book-title-heading" id="book-title-heading"></h2>
+    <div class="chapter-grid" id="chapter-grid"></div>
+    <footer class="note" id="home-footer-note"></footer>
+  </div>
+
   <!-- QUIZ SCREEN -->
+
   <div id="quiz-screen" class="hidden">
     <div class="quiz-header">
       <button class="back-btn" id="back-btn">← अध्याय सूची</button>
@@ -383,7 +406,24 @@
 
 <script>
 /* ============ DATA ============ */
-const chapters = [
+const books = [
+  {
+    id:1,
+    title:"Book 1",
+    subtitle:"जल्द आएगा",
+    chapters:[]
+  },
+  {
+    id:2,
+    title:"Book 2",
+    subtitle:"जल्द आएगा",
+    chapters:[]
+  },
+  {
+    id:3,
+    title:"Book 3",
+    subtitle:"तीर्थंकर-चरित्र एवं सम्यक्त्व कथाएँ",
+    chapters:[
   {
     id:1,
     title:"भगवान अजितनाथ",
@@ -643,9 +683,21 @@ const chapters = [
       {q:"उनका देवलोकगमन किस तप के साथ हुआ?", o:["एक दिवसीय उपवास","13 दिवसीय तप-संथारा","एक माह के अनशन","बिना किसी तप के"], a:1, e:"13 दिवसीय तप-संथारे के साथ आचार्य हस्ती इस नश्वर देह को छोड़कर देवलोकगमन कर गए।"},
       {q:"वर्तमान में रत्नसंघ के अष्टम पट्टधर कौन हैं?", o:["आचार्य श्री शोभाचन्द्रजी महाराज","आचार्य श्री हीराचन्द्रजी महाराज","आचार्य श्री धर्मघोष महाराज","आचार्य श्री अरिदमन महाराज"], a:1, e:"सम्प्रति उनके सुयोग्य शिष्य आचार्य श्री हीराचन्द्रजी महाराज रत्नसंघ के अष्टम पट्टधर हैं।"}
     ]
+  }]
   },
   {
-    id:9,
+    id:4,
+    title:"Book 4",
+    subtitle:"जल्द आएगा",
+    chapters:[]
+  },
+  {
+    id:5,
+    title:"Book 5",
+    subtitle:"ब्रह्मदत्त चक्रवर्ती एवं आगामी अध्याय",
+    chapters:[
+{
+    id:1,
     title:"ब्रह्मदत्त चक्रवर्ती",
     subtitle:"अंतिम चक्रवर्ती की सुख-दुःख भरी पूर्ण गाथा",
     desc:"पांचालनरेश ब्रह्म के पुत्र ब्रह्मदत्त के जन्म, मित्र दीर्घ के विश्वासघात, वनवास, चक्रवर्ती बनने, चित्त-संभूत की पूर्वजन्म गाथा और अंततः नरक-गमन तक की पूर्ण कथा।",
@@ -775,10 +827,13 @@ const chapters = [
       {q:"ब्रह्मदत्त ने अंतिम समय किसे लगातार स्मरण करते हुए प्राण त्यागे?", o:["अपनी माता चुलनी को","अपनी महारानी कुरुमती को","मुनि चित्त को","अपने पिता ब्रह्म को"], a:1, e:"ब्रह्मदत्त ने अपनी महारानी कुरुमती को लगातार स्मरण करते हुए प्राण त्यागे और सातवीं नरक में चला गया।"}
     ]
   }
+    ]
+  }
 ];
 
 /* ============ STATE ============ */
 let state = {
+  bookId:null,
   chapterId:null,
   qIndex:0,
   score:0,
@@ -825,15 +880,64 @@ function playResultSound(pct){
 }
 
 /* ============ ELEMENTS ============ */
+const bookScreen = document.getElementById('book-screen');
 const homeScreen = document.getElementById('home-screen');
 const quizScreen = document.getElementById('quiz-screen');
 const resultScreen = document.getElementById('result-screen');
+const bookGrid = document.getElementById('book-grid');
 const chapterGrid = document.getElementById('chapter-grid');
 
-/* ============ RENDER HOME ============ */
+/* ============ RENDER BOOKS ============ */
+function renderBooks(){
+  bookGrid.innerHTML = '';
+  books.forEach((bk)=>{
+    const card = document.createElement('div');
+    card.className = 'chapter-card';
+    const chCount = bk.chapters.length;
+    const qCount = bk.chapters.reduce((s,c)=>s+c.questions.length,0);
+    card.innerHTML = `
+      <div class="num">Book ${bk.id}</div>
+      <h2>${bk.title}</h2>
+      <p>${bk.subtitle}</p>
+      <div class="chapter-meta">
+        <span>${chCount ? chCount + ' अध्याय, ' + qCount + ' प्रश्न' : 'जल्द आएगा'}</span>
+        <span class="go">${chCount ? 'खोलें →' : ''}</span>
+      </div>
+    `;
+    card.addEventListener('click', ()=> selectBook(bk.id));
+    bookGrid.appendChild(card);
+  });
+}
+
+function selectBook(bookId){
+  state.bookId = bookId;
+  const bk = books.find(b=>b.id===bookId);
+  bookScreen.classList.add('hidden');
+  homeScreen.classList.remove('hidden');
+  document.getElementById('book-title-heading').textContent = bk.title + ' — अध्याय';
+  const footerNote = document.getElementById('home-footer-note');
+  if(bk.chapters.length){
+    footerNote.innerHTML = 'प्रत्येक अध्याय की कथा में दिए गए हर महत्वपूर्ण प्रसंग, नाम व घटना पर आधारित प्रश्न हैं।';
+  } else {
+    footerNote.innerHTML = '';
+  }
+  renderHome();
+}
+
+document.getElementById('back-to-books-btn').addEventListener('click', ()=>{
+  homeScreen.classList.add('hidden');
+  bookScreen.classList.remove('hidden');
+});
+
+/* ============ RENDER HOME (chapters within selected book) ============ */
 function renderHome(){
   chapterGrid.innerHTML = '';
-  chapters.forEach((ch, idx)=>{
+  const bk = books.find(b=>b.id===state.bookId);
+  if(!bk.chapters.length){
+    chapterGrid.innerHTML = '<div class="empty-book-msg">इस पुस्तक के अध्याय जल्द जोड़े जाएंगे।</div>';
+    return;
+  }
+  bk.chapters.forEach((ch, idx)=>{
     const card = document.createElement('div');
     card.className = 'chapter-card';
     card.innerHTML = `
@@ -853,7 +957,8 @@ function renderHome(){
 
 /* ============ QUIZ LOGIC ============ */
 function startQuiz(chapterId){
-  state = { chapterId, qIndex:0, score:0, answered:false };
+  state = { bookId: state.bookId, chapterId, qIndex:0, score:0, answered:false };
+  bookScreen.classList.add('hidden');
   homeScreen.classList.add('hidden');
   resultScreen.classList.add('hidden');
   quizScreen.classList.remove('hidden');
@@ -861,8 +966,10 @@ function startQuiz(chapterId){
 }
 
 function currentChapter(){
-  return chapters.find(c=>c.id===state.chapterId);
+  const bk = books.find(b=>b.id===state.bookId);
+  return bk.chapters.find(c=>c.id===state.chapterId);
 }
+
 
 function shuffleOptions(q){
   const optsWithFlag = q.o.map((text, i)=>({ text, correct: i === q.a }));
@@ -1018,7 +1125,7 @@ function drawLotus(pct){
 }
 
 /* ============ INIT ============ */
-renderHome();
+renderBooks();
 </script>
 
 </body>
