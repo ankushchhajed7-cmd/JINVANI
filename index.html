@@ -319,6 +319,102 @@
     .chapter-card, .option, .progress-fill, .petal{ transition:none !important; }
   }
 
+  /* ---------- Listen (सुनें) mode ---------- */
+  .listen-btn{
+    display:block;
+    width:100%;
+    margin-top:10px;
+    padding:9px 14px;
+    border-radius:999px;
+    border:1.5px solid var(--maroon);
+    background:transparent;
+    color:var(--maroon);
+    font-family:'Mukta',sans-serif;
+    font-weight:700;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  .listen-btn:active{ background:rgba(122,31,43,0.10); }
+
+  .listen-controls{
+    position:sticky;
+    top:0;
+    z-index:5;
+    display:flex;
+    gap:8px;
+    align-items:center;
+    justify-content:center;
+    padding:10px 8px;
+    margin:12px 0 10px;
+    background:linear-gradient(180deg,#fbf3de,var(--parchment-deep));
+    border:1px solid rgba(122,31,43,0.22);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+  }
+  .lc-btn{
+    border:1.5px solid var(--maroon);
+    background:transparent;
+    color:var(--maroon);
+    font-family:'Mukta',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    padding:8px 14px;
+    border-radius:999px;
+    cursor:pointer;
+    line-height:1.2;
+  }
+  .lc-btn.main{ background:var(--maroon); color:var(--parchment); min-width:118px; }
+  .lc-btn:disabled{ opacity:0.4; }
+  .lc-status{
+    text-align:center;
+    font-size:13px;
+    color:#5a4633;
+    margin:0 0 14px;
+    font-weight:600;
+  }
+  .qa-item{
+    background:linear-gradient(180deg,#fbf3de,var(--parchment-deep));
+    border:1px solid rgba(122,31,43,0.18);
+    border-left:5px solid rgba(122,31,43,0.22);
+    border-radius:12px;
+    padding:14px 14px 12px;
+    margin-bottom:12px;
+    cursor:pointer;
+    transition:box-shadow .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .qa-item.active{
+    border-left-color:var(--gold);
+    box-shadow:0 6px 18px rgba(184,134,11,0.30);
+    background:linear-gradient(180deg,#fff8e6,#f6e7bf);
+  }
+  .qa-item .qa-num{
+    font-family:'Yatra One',cursive;
+    font-size:12px;
+    color:var(--gold);
+    letter-spacing:0.10em;
+  }
+  .qa-item .qa-q{
+    font-size:15.5px;
+    font-weight:600;
+    color:var(--ink);
+    margin:4px 0 8px;
+    line-height:1.55;
+  }
+  .qa-item .qa-a{
+    font-size:15px;
+    color:var(--sage);
+    font-weight:700;
+    line-height:1.55;
+  }
+  .qa-item .qa-e{
+    font-size:13.5px;
+    color:#5a4633;
+    margin-top:8px;
+    line-height:1.55;
+    border-top:1px dashed rgba(122,31,43,0.22);
+    padding-top:8px;
+  }
+
   .hidden{ display:none !important; }
   .book-title-heading{
     font-family:'Yatra One', cursive;
@@ -361,6 +457,23 @@
     <h2 class="book-title-heading" id="book-title-heading"></h2>
     <div class="chapter-grid" id="chapter-grid"></div>
     <footer class="note" id="home-footer-note"></footer>
+  </div>
+
+  <!-- LISTEN SCREEN -->
+  <div id="listen-screen" class="hidden">
+    <button class="back-btn" id="listen-back-btn">← अध्याय सूची</button>
+    <div class="chapter-title-small" id="listen-chapter-title"></div>
+    <div class="q-count" id="listen-count-text"></div>
+
+    <div class="listen-controls">
+      <button class="lc-btn" id="lc-prev" title="पिछला">⏮</button>
+      <button class="lc-btn main" id="lc-play">▶ सुनें</button>
+      <button class="lc-btn" id="lc-next" title="अगला">⏭</button>
+      <button class="lc-btn" id="lc-stop" title="रोकें">■</button>
+    </div>
+    <div class="lc-status" id="lc-status"></div>
+
+    <div id="qa-list"></div>
   </div>
 
   <!-- QUIZ SCREEN -->
@@ -1880,9 +1993,17 @@ function renderHome(){
         <span>${ch.questions.length} प्रश्न</span>
         <span class="go">आरंभ करें →</span>
       </div>
+      <button class="listen-btn" type="button">🔊 प्रश्न-उत्तर सुनें</button>
       ${ch.partial ? '<div class="partial-tag">आंशिक अध्याय</div>' : ''}
     `;
-    card.addEventListener('click', ()=> startQuiz(ch.id));
+    card.addEventListener('click', (e)=>{
+      if(e.target.closest('.listen-btn')) return;
+      startQuiz(ch.id);
+    });
+    card.querySelector('.listen-btn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openListen(ch.id);
+    });
     chapterGrid.appendChild(card);
   });
 }
@@ -2055,6 +2176,193 @@ function drawLotus(pct){
     group.appendChild(path);
   }
 }
+
+/* ============ LISTEN (सुनें) MODE ============ */
+const listenScreen = document.getElementById('listen-screen');
+const lcPlayBtn    = document.getElementById('lc-play');
+const lcStatusEl   = document.getElementById('lc-status');
+const qaListEl     = document.getElementById('qa-list');
+
+let listen = { chapterId:null, index:0, playing:false, items:[] };
+let listenUtter = null;
+
+function lcStatus(msg){ lcStatusEl.textContent = msg; }
+
+function updatePlayBtn(){
+  lcPlayBtn.textContent = listen.playing ? '⏸ रोकें' : '▶ सुनें';
+}
+
+function stopSpeech(){
+  if(!window.speechSynthesis) return;
+  if(listenUtter){ listenUtter.onend = null; listenUtter.onerror = null; }
+  listenUtter = null;
+  window.speechSynthesis.cancel();
+}
+
+function openListen(chapterId){
+  stopSpeech();
+  const bk = books.find(b=>b.id===state.bookId);
+  if(!bk) return;
+  const ch = bk.chapters.find(c=>c.id===chapterId);
+  if(!ch) return;
+
+  listen.chapterId = chapterId;
+  listen.items = ch.questions;
+  listen.index = 0;
+  listen.playing = false;
+
+  bookScreen.classList.add('hidden');
+  homeScreen.classList.add('hidden');
+  quizScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  listenScreen.classList.remove('hidden');
+
+  document.getElementById('listen-chapter-title').textContent = ch.title;
+  document.getElementById('listen-count-text').textContent = 'कुल ' + ch.questions.length + ' प्रश्न-उत्तर';
+
+  renderQAList();
+  updatePlayBtn();
+  if(window.speechSynthesis){
+    lcStatus('सुनने के लिए ▶ दबाएँ');
+  } else {
+    lcStatus('इस डिवाइस में वाणी सुविधा उपलब्ध नहीं है — प्रश्नोत्तर नीचे पढ़ सकते हैं');
+  }
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function closeListen(){
+  stopSpeech();
+  listen.playing = false;
+  listenScreen.classList.add('hidden');
+  homeScreen.classList.remove('hidden');
+}
+
+function renderQAList(){
+  qaListEl.innerHTML = '';
+  listen.items.forEach((q, i)=>{
+    const div = document.createElement('div');
+    div.className = 'qa-item' + (i === listen.index ? ' active' : '');
+    div.innerHTML = `
+      <div class="qa-num">प्रश्न ${i+1}</div>
+      <div class="qa-q">${q.q}</div>
+      <div class="qa-a">उत्तर: ${q.o[q.a]}</div>
+      ${q.e ? `<div class="qa-e">${q.e}</div>` : ''}
+    `;
+    div.addEventListener('click', ()=> playFrom(i));
+    qaListEl.appendChild(div);
+  });
+}
+
+function highlightQA(i, scroll){
+  const items = qaListEl.querySelectorAll('.qa-item');
+  items.forEach((el, idx)=> el.classList.toggle('active', idx === i));
+  if(scroll && items[i]) items[i].scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function speakQA(i, onDone){
+  if(!window.speechSynthesis) return;
+  const q = listen.items[i];
+  const text = 'प्रश्न ' + (i+1) + '. ' + q.q + '  उत्तर. ' + q.o[q.a];
+
+  if(listenUtter){ listenUtter.onend = null; listenUtter.onerror = null; }
+  listenUtter = null;
+  window.speechSynthesis.cancel();
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'hi-IN';
+  if(hindiVoice) u.voice = hindiVoice;
+  u.rate = 0.95;
+  u.pitch = 1;
+  u.onend = ()=>{ if(listenUtter === u && listen.playing) onDone(); };
+  u.onerror = ()=>{ if(listenUtter === u && listen.playing) onDone(); };
+  listenUtter = u;
+  window.speechSynthesis.speak(u);
+}
+
+function playFrom(i){
+  if(!window.speechSynthesis){
+    lcStatus('इस डिवाइस में वाणी सुविधा उपलब्ध नहीं है');
+    return;
+  }
+  if(i < 0 || i >= listen.items.length) return;
+
+  listen.index = i;
+  listen.playing = true;
+  updatePlayBtn();
+  highlightQA(i, true);
+  lcStatus('चल रहा है — ' + (i+1) + ' / ' + listen.items.length);
+
+  speakQA(i, ()=>{
+    if(listen.index + 1 < listen.items.length){
+      playFrom(listen.index + 1);
+    } else {
+      listen.playing = false;
+      updatePlayBtn();
+      lcStatus('समाप्त — सभी ' + listen.items.length + ' प्रश्न-उत्तर सुन लिए');
+    }
+  });
+}
+
+function toggleListenPlay(){
+  if(!window.speechSynthesis){
+    lcStatus('इस डिवाइस में वाणी सुविधा उपलब्ध नहीं है');
+    return;
+  }
+  if(listen.playing){
+    listen.playing = false;
+    stopSpeech();
+    updatePlayBtn();
+    lcStatus('रुका हुआ — प्रश्न ' + (listen.index+1) + ' / ' + listen.items.length);
+  } else {
+    playFrom(listen.index);
+  }
+}
+
+function jumpListen(delta){
+  const ni = listen.index + delta;
+  if(ni < 0 || ni >= listen.items.length) return;
+  if(listen.playing){
+    playFrom(ni);
+  } else {
+    listen.index = ni;
+    highlightQA(ni, true);
+    lcStatus('प्रश्न ' + (ni+1) + ' / ' + listen.items.length + ' — ▶ दबाएँ');
+  }
+}
+
+function stopListenAll(){
+  listen.playing = false;
+  stopSpeech();
+  listen.index = 0;
+  highlightQA(0, true);
+  updatePlayBtn();
+  lcStatus('रोक दिया गया — शुरू से सुनने के लिए ▶ दबाएँ');
+}
+
+lcPlayBtn.addEventListener('click', toggleListenPlay);
+document.getElementById('lc-prev').addEventListener('click', ()=> jumpListen(-1));
+document.getElementById('lc-next').addEventListener('click', ()=> jumpListen(1));
+document.getElementById('lc-stop').addEventListener('click', stopListenAll);
+document.getElementById('listen-back-btn').addEventListener('click', closeListen);
+
+/* keep-alive: कुछ ब्राउज़र लंबी वाणी को बीच में रोक देते हैं */
+setInterval(()=>{
+  if(listen.playing && window.speechSynthesis &&
+     window.speechSynthesis.speaking && !window.speechSynthesis.paused){
+    window.speechSynthesis.pause();
+    window.speechSynthesis.resume();
+  }
+}, 9000);
+
+/* ऐप बैकग्राउंड में जाए तो वाणी बंद करें */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden && listen.playing){
+    listen.playing = false;
+    stopSpeech();
+    updatePlayBtn();
+    lcStatus('रुका हुआ — प्रश्न ' + (listen.index+1) + ' / ' + listen.items.length);
+  }
+});
 
 /* ============ INIT ============ */
 renderBooks();
