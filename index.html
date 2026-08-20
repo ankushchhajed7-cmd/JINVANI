@@ -363,7 +363,8 @@
     cursor:pointer;
     line-height:1.2;
   }
-  .lc-btn.main{ background:var(--maroon); color:var(--parchment); min-width:118px; }
+  .lc-btn.main{ background:var(--maroon); color:var(--parchment); min-width:104px; }
+  .lc-btn.lc-rate{ font-size:13px; padding:8px 11px; }
   .lc-btn:disabled{ opacity:0.4; }
   .lc-status{
     text-align:center;
@@ -470,6 +471,7 @@
       <button class="lc-btn main" id="lc-play">▶ सुनें</button>
       <button class="lc-btn" id="lc-next" title="अगला">⏭</button>
       <button class="lc-btn" id="lc-stop" title="रोकें">■</button>
+      <button class="lc-btn lc-rate" id="lc-rate" title="गति">1x</button>
     </div>
     <div class="lc-status" id="lc-status"></div>
 
@@ -2183,8 +2185,11 @@ const lcPlayBtn    = document.getElementById('lc-play');
 const lcStatusEl   = document.getElementById('lc-status');
 const qaListEl     = document.getElementById('qa-list');
 
-let listen = { chapterId:null, index:0, playing:false, items:[] };
+let listen = { chapterId:null, index:0, playing:false, items:[], _resume:null };
 let listenUtter = null;
+let speechToken = 0;
+let listenRate = 1;
+const RATE_STEPS = [0.75, 1, 1.25, 1.5];
 
 function lcStatus(msg){ lcStatusEl.textContent = msg; }
 
@@ -2193,6 +2198,8 @@ function updatePlayBtn(){
 }
 
 function stopSpeech(){
+  speechToken++;
+  listen._resume = null;
   if(!window.speechSynthesis) return;
   if(listenUtter){ listenUtter.onend = null; listenUtter.onerror = null; }
   listenUtter = null;
@@ -2259,24 +2266,53 @@ function highlightQA(i, scroll){
   if(scroll && items[i]) items[i].scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
+/* लंबे वाक्य को छोटे टुकड़ों में बाँटें — इससे ब्राउज़र वाणी बीच में नहीं टूटती */
+function splitForSpeech(text, maxLen){
+  maxLen = maxLen || 130;
+  const words = text.split(/\s+/).filter(Boolean);
+  const chunks = [];
+  let cur = '';
+  words.forEach(w=>{
+    if(cur && (cur + ' ' + w).length > maxLen){
+      chunks.push(cur);
+      cur = w;
+    } else {
+      cur = cur ? (cur + ' ' + w) : w;
+    }
+    if(/[।?!]$/.test(w) && cur.length >= 30){
+      chunks.push(cur);
+      cur = '';
+    }
+  });
+  if(cur) chunks.push(cur);
+  return chunks.length ? chunks : [text];
+}
+
 function speakQA(i, onDone){
   if(!window.speechSynthesis) return;
   const q = listen.items[i];
-  const text = 'प्रश्न ' + (i+1) + '. ' + q.q + '  उत्तर. ' + q.o[q.a];
+  const chunks = splitForSpeech('प्रश्न ' + (i+1) + '. ' + q.q + ' उत्तर. ' + q.o[q.a]);
 
-  if(listenUtter){ listenUtter.onend = null; listenUtter.onerror = null; }
-  listenUtter = null;
+  speechToken++;
+  const myToken = speechToken;
   window.speechSynthesis.cancel();
 
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'hi-IN';
-  if(hindiVoice) u.voice = hindiVoice;
-  u.rate = 0.95;
-  u.pitch = 1;
-  u.onend = ()=>{ if(listenUtter === u && listen.playing) onDone(); };
-  u.onerror = ()=>{ if(listenUtter === u && listen.playing) onDone(); };
-  listenUtter = u;
-  window.speechSynthesis.speak(u);
+  let ci = 0;
+  const speakNext = ()=>{
+    if(myToken !== speechToken || !listen.playing) return;
+    if(ci >= chunks.length){ listen._resume = null; onDone(); return; }
+    const u = new SpeechSynthesisUtterance(chunks[ci++]);
+    u.lang = 'hi-IN';
+    if(hindiVoice) u.voice = hindiVoice;
+    u.rate = listenRate;
+    u.pitch = 1;
+    u.onend   = ()=> speakNext();
+    u.onerror = ()=> speakNext();
+    listenUtter = u;
+    window.speechSynthesis.speak(u);
+  };
+  listen._resume = speakNext;
+  speakNext();
 }
 
 function playFrom(i){
@@ -2343,16 +2379,26 @@ lcPlayBtn.addEventListener('click', toggleListenPlay);
 document.getElementById('lc-prev').addEventListener('click', ()=> jumpListen(-1));
 document.getElementById('lc-next').addEventListener('click', ()=> jumpListen(1));
 document.getElementById('lc-stop').addEventListener('click', stopListenAll);
+document.getElementById('lc-rate').addEventListener('click', ()=>{
+  const ni = (RATE_STEPS.indexOf(listenRate) + 1) % RATE_STEPS.length;
+  listenRate = RATE_STEPS[ni];
+  document.getElementById('lc-rate').textContent = listenRate + 'x';
+  if(listen.playing) playFrom(listen.index);   // नई गति तुरंत लागू करें
+});
 document.getElementById('listen-back-btn').addEventListener('click', closeListen);
 
-/* keep-alive: कुछ ब्राउज़र लंबी वाणी को बीच में रोक देते हैं */
+/* watchdog: अगर वाणी बीच में चुपचाप रुक जाए तो उसी जगह से आगे बढ़ाएँ */
+let listenStall = 0;
 setInterval(()=>{
-  if(listen.playing && window.speechSynthesis &&
-     window.speechSynthesis.speaking && !window.speechSynthesis.paused){
-    window.speechSynthesis.pause();
-    window.speechSynthesis.resume();
+  if(!listen.playing || !window.speechSynthesis){ listenStall = 0; return; }
+  const ss = window.speechSynthesis;
+  if(ss.speaking || ss.pending){ listenStall = 0; return; }
+  listenStall++;
+  if(listenStall >= 2){
+    listenStall = 0;
+    if(typeof listen._resume === 'function') listen._resume();
   }
-}, 9000);
+}, 1200);
 
 /* ऐप बैकग्राउंड में जाए तो वाणी बंद करें */
 document.addEventListener('visibilitychange', ()=>{
