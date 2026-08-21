@@ -248,6 +248,7 @@
     line-height:1.55;
     margin:0 0 16px;
     color:var(--ink);
+    white-space:pre-line;   /* 'किसने किससे कहा' में कथन और प्रश्न अलग पंक्ति में */
   }
   .options{
     display:flex;
@@ -361,6 +362,66 @@
   @media (prefers-reduced-motion: reduce){
     .chapter-card, .option, .progress-fill, .petal{ transition:none !important; }
   }
+
+  /* ---------- Practice modes ---------- */
+  .mode-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+  .mode-card{
+    display:flex; align-items:center; gap:14px;
+    padding:16px 16px;
+    border:2px solid rgba(122,31,43,0.22);
+    border-radius:14px;
+    background:rgba(255,255,255,0.55);
+    cursor:pointer;
+  }
+  .mode-card:active{ background:rgba(184,134,11,0.14); }
+  .mode-card .mi{ font-size:26px; line-height:1; }
+  .mode-card .mt{ flex:1; }
+  .mode-card .mt b{
+    display:block; font-family:'Yatra One',cursive; font-size:18px;
+    color:var(--maroon-deep); font-weight:normal; margin-bottom:2px;
+  }
+  .mode-card .mt small{ font-size:13px; color:#6b5540; }
+  .mode-card .mc{
+    font-size:13px; font-weight:700; color:var(--gold);
+    white-space:nowrap;
+  }
+  .mode-card.off{ opacity:0.42; cursor:default; }
+  .mode-card.off:active{ background:rgba(255,255,255,0.55); }
+  .mode-scope{
+    text-align:center; font-size:13.5px; color:#6b5540; margin:0 0 14px;
+  }
+
+  /* ---------- One-word (flashcard) ---------- */
+  .ow-card{
+    background:rgba(255,255,255,0.6);
+    border:2px solid rgba(122,31,43,0.22);
+    border-radius:16px;
+    padding:22px 18px;
+    text-align:center;
+    box-shadow:var(--shadow);
+  }
+  .ow-q{ font-size:19px; line-height:1.65; color:var(--ink); margin:0 0 18px; }
+  .ow-ans{
+    display:none;
+    margin:16px 0 4px; padding:14px 12px;
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(220,174,58,0.22), rgba(184,134,11,0.12));
+    font-family:'Yatra One',cursive; font-size:24px; color:var(--maroon-deep);
+  }
+  .ow-ans.show{ display:block; }
+  .ow-e{ display:none; font-size:14px; color:#5a4633; margin-top:10px; line-height:1.6; }
+  .ow-e.show{ display:block; }
+  .ow-actions{ display:flex; gap:10px; margin-top:18px; }
+  .ow-actions button{
+    flex:1; padding:13px 10px; border-radius:12px; border:2px solid var(--gold);
+    background:rgba(255,255,255,0.7); font-family:'Mukta',sans-serif;
+    font-size:15px; font-weight:700; color:var(--maroon-deep); cursor:pointer;
+  }
+  .ow-actions button.reveal{ background:linear-gradient(180deg,#dcae3a,#b8860b); color:#3a2405; }
+  .ow-actions button.right{ border-color:var(--sage); color:var(--sage); }
+  .ow-actions button.wrong{ border-color:var(--rust); color:var(--rust); }
+  #ow-grade{ display:none; }
+  #ow-grade.show{ display:flex; }
 
   /* ---------- Book-wise non-stop listen ---------- */
   .listen-book-bar{
@@ -544,9 +605,42 @@
     <h2 class="book-title-heading" id="book-title-heading"></h2>
     <div class="listen-book-bar" id="listen-book-bar">
       <button type="button" id="listen-whole-book-btn">🔊 पूरी पुस्तक सुनें (नॉन-स्टॉप)</button>
+      <button type="button" id="practice-whole-book-btn">📝 पूरी पुस्तक अभ्यास</button>
     </div>
     <div class="chapter-grid" id="chapter-grid"></div>
     <footer class="note" id="home-footer-note"></footer>
+  </div>
+
+  <!-- MODE SCREEN -->
+  <div id="mode-screen" class="hidden">
+    <button class="back-btn" id="mode-back-btn">← वापस</button>
+    <div class="chapter-title-small" id="mode-title"></div>
+    <p class="mode-scope" id="mode-scope"></p>
+    <div class="mode-grid" id="mode-grid"></div>
+  </div>
+
+  <!-- ONE-WORD SCREEN -->
+  <div id="ow-screen" class="hidden">
+    <div class="quiz-header">
+      <button class="back-btn" id="ow-back-btn">← वापस</button>
+      <span class="score-pill" id="ow-score">स्कोर: 0</span>
+    </div>
+    <div class="chapter-title-small" id="ow-title"></div>
+    <div class="q-count" id="ow-progress"></div>
+    <div class="progress-track"><div class="progress-fill" id="ow-fill" style="width:0%"></div></div>
+
+    <div class="ow-card">
+      <p class="ow-q" id="ow-q"></p>
+      <div class="ow-ans" id="ow-ans"></div>
+      <div class="ow-e" id="ow-e"></div>
+      <div class="ow-actions" id="ow-reveal-row">
+        <button type="button" class="reveal" id="ow-reveal">उत्तर देखें</button>
+      </div>
+      <div class="ow-actions" id="ow-grade">
+        <button type="button" class="right" id="ow-right">✔ मेरा उत्तर सही था</button>
+        <button type="button" class="wrong" id="ow-wrong">✘ गलत था</button>
+      </div>
+    </div>
   </div>
 
   <!-- LISTEN SCREEN -->
@@ -3417,7 +3511,7 @@ function renderHome(){
     card.addEventListener('click', (e)=>{
       if(e.target.closest('.listen-btn')) return;
       navPush();
-      startQuiz(ch.id);
+      openModes({ type:'chapter', chapterId: ch.id });
     });
     card.querySelector('.listen-btn').addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -3429,13 +3523,27 @@ function renderHome(){
 }
 
 /* ============ QUIZ LOGIC ============ */
-function startQuiz(chapterId){
-  state = { bookId: state.bookId, chapterId, qIndex:0, score:0, answered:false };
+function startQuiz(chapterId, items, label){
+  state = { bookId: state.bookId, chapterId, qIndex:0, score:0, answered:false,
+            items: items || null, label: label || null };
+  if(!state.items){
+    const ch = currentChapter();
+    state.items = ch ? ch.questions.slice() : [];
+    state.label = ch ? ch.title : '';
+  }
+  hideAllScreens();
+  quizScreen.classList.remove('hidden');
+  renderQuestion();
+}
+
+function hideAllScreens(){
   bookScreen.classList.add('hidden');
   homeScreen.classList.add('hidden');
   resultScreen.classList.add('hidden');
-  quizScreen.classList.remove('hidden');
-  renderQuestion();
+  quizScreen.classList.add('hidden');
+  listenScreen.classList.add('hidden');
+  document.getElementById('mode-screen').classList.add('hidden');
+  document.getElementById('ow-screen').classList.add('hidden');
 }
 
 function currentChapter(){
@@ -3454,12 +3562,11 @@ function shuffleOptions(q){
 }
 
 function renderQuestion(){
-  const ch = currentChapter();
-  const total = ch.questions.length;
-  const q = ch.questions[state.qIndex];
+  const total = state.items.length;
+  const q = state.items[state.qIndex];
   state.answered = false;
 
-  document.getElementById('quiz-chapter-title').textContent = ch.title;
+  document.getElementById('quiz-chapter-title').textContent = state.label || '';
   document.getElementById('quiz-progress-text').textContent = `प्रश्न ${state.qIndex+1} / ${total}`;
   document.getElementById('score-pill').textContent = `स्कोर: ${state.score}`;
   document.getElementById('progress-fill').style.width = `${(state.qIndex/total)*100}%`;
@@ -3492,7 +3599,7 @@ function selectOption(i, btnEl){
   state.answered = true;
 
   const shuffled = state.currentOptions;
-  const q = currentChapter().questions[state.qIndex];
+  const q = state.items[state.qIndex];
   const allOptions = document.querySelectorAll('#options-holder .option');
   const correctIndex = shuffled.findIndex(o => o.correct);
 
@@ -3519,8 +3626,7 @@ function selectOption(i, btnEl){
 }
 
 document.getElementById('next-btn').addEventListener('click', ()=>{
-  const ch = currentChapter();
-  if(state.qIndex < ch.questions.length - 1){
+  if(state.qIndex < state.items.length - 1){
     state.qIndex++;
     renderQuestion();
   } else {
@@ -3533,19 +3639,18 @@ document.getElementById('back-btn').addEventListener('click', goBack);
 document.getElementById('home-btn').addEventListener('click', goBack);
 
 document.getElementById('retry-btn').addEventListener('click', ()=>{
-  startQuiz(state.chapterId);
+  startQuiz(state.chapterId, state.items.slice(), state.label);
 });
 
 /* ============ RESULT + LOTUS ============ */
 function showResult(){
-  const ch = currentChapter();
-  const total = ch.questions.length;
+  const total = state.items.length;
   const pct = Math.round((state.score/total)*100);
 
   quizScreen.classList.add('hidden');
   resultScreen.classList.remove('hidden');
 
-  document.getElementById('result-score').textContent = `${ch.title} — ${state.score} / ${total} सही (${pct}%)`;
+  document.getElementById('result-score').textContent = `${state.label || ''} — ${state.score} / ${total} सही (${pct}%)`;
 
   let title, msg;
   if(pct >= 90){ title = "सम्यक्त्व में सुदृढ़!"; msg = "अद्भुत! आपने कथा के हर प्रसंग को गहराई से आत्मसात किया है।"; }
@@ -3600,14 +3705,23 @@ function navPush(){
 
 /* स्क्रीन देखकर एक स्तर पीछे जाएँ */
 function navigateBackOneLevel(){
+  const modeScreen = document.getElementById('mode-screen');
+  const owScreen   = document.getElementById('ow-screen');
   if(!listenScreen.classList.contains('hidden')){
     closeListen();
+  } else if(!owScreen.classList.contains('hidden')){
+    owScreen.classList.add('hidden');
+    openModes(modeScope);
+  } else if(!modeScreen.classList.contains('hidden')){
+    modeScreen.classList.add('hidden');
+    if(modeScope.type === 'book'){ homeScreen.classList.remove('hidden'); }
+    else { homeScreen.classList.remove('hidden'); }
   } else if(!resultScreen.classList.contains('hidden')){
     resultScreen.classList.add('hidden');
-    homeScreen.classList.remove('hidden');
+    openModes(modeScope);
   } else if(!quizScreen.classList.contains('hidden')){
     quizScreen.classList.add('hidden');
-    homeScreen.classList.remove('hidden');
+    openModes(modeScope);
   } else if(!homeScreen.classList.contains('hidden')){
     homeScreen.classList.add('hidden');
     bookScreen.classList.remove('hidden');
@@ -3957,6 +4071,282 @@ document.addEventListener('visibilitychange', ()=>{
     updatePlayBtn();
     lcStatus('रुका हुआ — प्रश्न ' + (listen.index+1) + ' / ' + listen.items.length);
   }
+});
+
+
+/* ============ अभ्यास मोड (नए) ============ */
+/* किसने किससे कहा — Book 7 (स्रोत: जैन इतिहास के प्रसंग 7) */
+const SAID_DATA = {
+  7: [
+    {c:3,  sp:'ऋषभदत्त',            to:'देवानन्दा',            t:'तुम्हें पुण्यशाली पुत्र की प्राप्ति होगी।'},
+    {c:5,  sp:'स्वप्न-शास्त्री',     to:'सिद्धार्थ और त्रिशला',  t:'ऐसे स्वप्न तीर्थंकर अथवा चक्रवर्ती की माताएँ ही देखती हैं।'},
+    {c:5,  sp:'गर्भस्थ भगवान',       to:'स्वयं (अभिग्रह)',       t:'जब तक माता-पिता जीवित रहेंगे, मैं प्रव्रजित नहीं होऊँगा।'},
+    {c:5,  sp:'महाराज सिद्धार्थ',    to:'नामकरण में आये लोगों',  t:'जब से यह शिशु माता के गर्भ में आया है, तब से हमारे यहाँ धन-धान्यादि की दिन दूनी रात चौगुनी अभिवृद्धि हुई है।'},
+    {c:6,  sp:'देवराज इन्द्र',       to:'देवताओं',              t:'बालक वर्द्धमान इतने पराक्रमी और साहसी हैं कि मानव तो क्या, देव-दानव भी उन्हें पराजित नहीं कर सकते।'},
+    {c:6,  sp:'वर्द्धमान',           to:'अपने साथियों',          t:'अरे भाई, तुम लोग भागते क्यों हो? यह छोटा-सा प्राणी हमारा कुछ नहीं बिगाड़ सकता।'},
+    {c:6,  sp:'साथी बालक',          to:'वर्द्धमान',             t:'भूल से भी इसे छूना नहीं, इसके काटने से आदमी मर जाता है।'},
+    {c:6,  sp:'परीक्षा लेने वाला देव', to:'वर्द्धमान',           t:'इन्द्र ने सच ही कहा था — आप वीर नहीं, महावीर हैं।'},
+    {c:7,  sp:'वृद्ध ब्राह्मण (इन्द्र)', to:'कलाचार्य पण्डित',   t:'आपके सामने शिष्य रूप में कोई साधारण बालक नहीं, बल्कि विद्या का सागर और शास्त्रों में पारंगत एक महापुरुष है।'},
+    {c:8,  sp:'नन्दिवर्धन',          to:'महावीर',               t:'अभी तो माता-पिता के स्वर्गवास के शोक से ही हम नहीं उबर पाये हैं। कुछ काल के लिए और ठहरो।'},
+    {c:8,  sp:'महावीर',             to:'नन्दिवर्धन',            t:'ठीक है, पर मुझे कब तक ठहरना होगा?'},
+    {c:8,  sp:'स्वजन',              to:'महावीर',               t:'कम से कम दो वर्ष।'},
+    {c:8,  sp:'महावीर',             to:'परिजनों',              t:'इस अवधि में आहारादि अपनी इच्छानुसार करूँगा।'},
+    {c:8,  sp:'महावीर',             to:'देव-मनुष्यों की परिषद्', t:'आज से मैं सम्पूर्ण सावद्यकर्म का तीन करण और तीन योग से त्याग करता हूँ।'},
+    {c:9,  sp:'भगवान महावीर',       to:'देवराज इन्द्र',         t:'अर्हन्त केवलज्ञान और सिद्धि प्राप्त करने के लिए किसी की सहायता नहीं लेते, बल्कि अपने बल से ही उसे प्राप्त करते हैं।'},
+    {c:11, sp:'आश्रम का कुलपति',    to:'महावीर',               t:'कुमार, आप निरन्तर ध्यानमय रहते हैं, पर पशुओं से आश्रम की कोई हानि न हो, इस पर भी कुछ ध्यान दे सकते हैं।'},
+    {c:12, sp:'पुजारी इन्द्रशर्मा',  to:'महावीर',               t:'महाराज, यहाँ एक यक्ष रहता है जो स्वभाव से क्रूर है। रात में यह किसी को ठहरने नहीं देता।'},
+    {c:14, sp:'सिद्धार्थ देव',       to:'मोराक ग्राम के लोगों',  t:'भगवान तीन ज्ञान के धारक हैं और भूत, भविष्य, वर्तमान तीनों काल की बातें जानते हैं।'},
+    {c:14, sp:'अच्छंदक',            to:'भगवान महावीर',         t:'भगवन्! आप तो निस्पृह और सर्वशक्तिमान हैं। आपके यहाँ रहने से मेरी आजीविका समाप्त हो रही है, मुझ पर दया करें।'},
+    {c:15, sp:'ग्वाले',             to:'भगवान महावीर',         t:'भगवन्! इस पथ पर आगे एक वन है, जहाँ चण्डकौशिक नामक एक भयंकर सर्प रहता है।'},
+    {c:15, sp:'शिष्य',              to:'तपस्वी मुनि',           t:'गुरुदेव! आपके पैर से दबकर मेंढकी मर गई।'},
+    {c:15, sp:'भगवान महावीर',       to:'चण्डकौशिक',            t:'शांत हो! जागृत हो! पूर्वजन्म के कर्मों के कारण तू सर्प बना है, अब तो सँभल जा।'},
+    {c:16, sp:'खेमिल निमित्तज्ञ',    to:'नाव के यात्रियों',      t:'बड़ा संकट आने वाला है, पर इन महापुरुष के प्रबल पुण्य-प्रताप से किसी प्रकार की हानि नहीं होगी।'},
+    {c:17, sp:'पुष्य निमित्तज्ञ',    to:'स्वयं',                t:'इन चिन्हों वाला व्यक्ति तो कोई चक्रवर्ती सम्राट होना चाहिए।'},
+    {c:17, sp:'देवेन्द्र',           to:'पुष्य निमित्तज्ञ',      t:'यह कोई साधारण पुरुष नहीं, महान् धर्म-चक्रवर्ती हैं, जिनकी देव-देवेन्द्र तक वंदना करते हैं।'},
+    {c:18, sp:'गोशालक',             to:'भगवान महावीर',         t:'भगवन्! मुझे आज भिक्षा में क्या मिलेगा?'},
+    {c:18, sp:'सिद्धार्थ देव',       to:'गोशालक',               t:'कोदो का बासी भात, खट्टी छाछ और खोटा रुपया।'},
+    {c:18, sp:'गोशालक',             to:'भगवान महावीर',         t:'आज से आप मेरे धर्माचार्य हैं और मैं आपका शिष्य हूँ।'},
+    {c:18, sp:'सिद्धार्थ देव',       to:'गोशालक',               t:'हंडिया फूटने पर पकने के पहले ही खीर मिट्टी में मिल जाएगी।'},
+    {c:18, sp:'गोशालक',             to:'पार्श्व-परम्परा के साधुओं', t:'तुम इतने रंग-बिरंगे वस्त्र धारण किये हो, पात्र रखे हो, फिर भी अपने आपको निर्ग्रन्थ कहते हो!'},
+    {c:18, sp:'पार्श्व-परम्परा के साधु', to:'गोशालक',           t:'जैसे तुम, वैसे ही तुम्हारे आचार्य स्वयंगृहीतलिंग होंगे।'},
+    {c:18, sp:'गोशालक',             to:'पार्श्व-परम्परा के साधुओं', t:'तुम्हारा उपाश्रय जलकर भस्म हो जाएगा।'},
+    {c:18, sp:'सिद्धार्थ देव',       to:'गोशालक',               t:'साधुओं का तप-तेज श्राप देने और उपाश्रय जलाने के लिए नहीं होता।'},
+    {c:19, sp:'गोशालक',             to:'सावत्थी के लोगों',      t:'यह कैसा धर्म है, जिसमें स्त्री-पुरुष एक साथ निर्लज्ज नाचते-गाते हैं।'},
+    {c:19, sp:'गोशालक',             to:'चौराक के लोगों',        t:'लोगों ने अकारण ही मुझे सताया है।'},
+    {c:21, sp:'विजया और प्रगल्भा',   to:'कूविय के लोगों',        t:'ये महान् तीर्थंकर महावीर हैं, अगर इन्द्र को पता चला तो वे तुम्हें सजा देंगे।'},
+    {c:23, sp:'गोशालक',             to:'भगवान महावीर',         t:'भगवन्! क्या यह पौधा फल उत्पन्न करेगा?'},
+    {c:23, sp:'भगवान महावीर',       to:'गोशालक',               t:'हाँ, पौधा फलेगा और सातों फूलों के जीव इसकी एक ही फली में उत्पन्न होंगे।'},
+    {c:23, sp:'गोशालक',             to:'वैश्यायन तपस्वी',       t:'तुम तपस्वी हो या जूँ-निकेतन?'},
+    {c:23, sp:'आनंद श्रमणोपासक',    to:'भगवान महावीर',         t:'आपका शरीर और मन वज्र के समान दृढ़ है। शीघ्र ही आपको केवलज्ञान की उपलब्धि होने वाली है।'},
+    {c:24, sp:'दासी बहुला',         to:'भगवान महावीर',         t:'क्या चाहिए महाराज?'},
+    {c:25, sp:'देवराज इन्द्र',       to:'देव-सभा',              t:'वर्द्धमान महावीर का साहस और धैर्य इतना अनूठा है कि मानव तो क्या, देव और दानव भी उनको साधना से विचलित नहीं कर सकते।'},
+    {c:25, sp:'संगम देव',           to:'भगवान महावीर',         t:'देवेन्द्र ने आपके बारे में जो कहा है, वह सत्य है। आप अपनी प्रतिज्ञा में दृढ़ हैं, मेरे अपराध क्षमा करें।'},
+    {c:25, sp:'भगवान महावीर',       to:'संगम देव',             t:'मैं स्वेच्छा से तप और भिक्षा ग्रहण करता हूँ। मुझे किसी के आश्वासन की अपेक्षा नहीं है।'},
+    {c:27, sp:'स्वातिदत्त',          to:'भगवान महावीर',         t:'भगवन्! आत्मा क्या है?'},
+    {c:27, sp:'भगवान महावीर',       to:'स्वातिदत्त',            t:'ज्ञान आत्मा का असाधारण गुण है और आत्मा ज्ञान का आधार है।'}
+  ]
+};
+
+function _wc(s){ return s.trim().split(/\s+/).length; }
+function _occ(h,n){ return h.split(n).length - 1; }
+function _shuffle(a){
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+/* रिक्त स्थान — व्याख्या में से सही उत्तर हटाकर */
+function genFill(qs){
+  const out = [];
+  qs.forEach(q=>{
+    const ans = q.o[q.a].trim();
+    const e = (q.e||'').trim();
+    if(e.length < 30) return;
+    if(ans.length < 3 || ans.length > 45) return;
+    if(_occ(e, ans) !== 1) return;
+    const stmt = e.replace(ans, '______');
+    if(stmt.indexOf('______') === 0) return;
+    out.push({ q: stmt, o: q.o.slice(), a: q.a, e: e });
+  });
+  return out;
+}
+
+/* एक शब्द में उत्तर */
+function genOneWord(qs){
+  const out = [];
+  qs.forEach(q=>{
+    const ans = q.o[q.a].trim();
+    if(_wc(ans) > 3 || ans.length > 32) return;
+    out.push({ q: q.q, ans: ans, e: q.e || '' });
+  });
+  return out;
+}
+
+/* सही / गलत */
+function genTF(qs){
+  const T = [], F = [];
+  qs.forEach(q=>{
+    const ans = q.o[q.a].trim();
+    const e = (q.e||'').trim();
+    if(e.length < 30) return;
+    T.push({ q: e, o:['सही','गलत'], a:0, e:'✔ यह कथन सही है।' });
+    if(ans.length < 3 || ans.length > 45) return;
+    if(_occ(e, ans) !== 1) return;
+    const others = q.o.filter((_,i)=>i!==q.a).map(x=>x.trim()).filter(x=>
+      x.length>=3 && x.length<=45 && _wc(x) <= _wc(ans)*2+1 && _wc(x)*2+1 >= _wc(ans));
+    if(!others.length) return;
+    const d = others[Math.floor(Math.random()*others.length)];
+    F.push({ q: e.replace(ans, d), o:['सही','गलत'], a:1, e:'✘ गलत — सही है: ' + ans + '।' });
+  });
+  _shuffle(T); _shuffle(F);
+  const n = Math.min(T.length, F.length);
+  return _shuffle(T.slice(0,n).concat(F.slice(0,n)));
+}
+
+/* किसने किससे कहा */
+function genSaid(bookId, chapterId){
+  const pool = SAID_DATA[bookId] || [];
+  if(pool.length < 4) return [];
+  const scope = (chapterId == null) ? pool : pool.filter(x=>x.c === chapterId);
+  if(!scope.length) return [];
+  const label = x => x.sp + ' ने ' + x.to + ' से';
+  const out = [];
+  scope.forEach(item=>{
+    const correct = label(item);
+    const distract = [];
+    _shuffle(pool.slice()).forEach(o=>{
+      const l = label(o);
+      if(l !== correct && distract.indexOf(l) === -1 && distract.length < 3) distract.push(l);
+    });
+    if(distract.length < 3) return;
+    const opts = _shuffle([correct].concat(distract));
+    out.push({
+      q: '“' + item.t + '”\n\n— यह किसने, किससे कहा?',
+      o: opts,
+      a: opts.indexOf(correct),
+      e: correct + ' कहा।'
+    });
+  });
+  return _shuffle(out);
+}
+
+/* ---- scope se prashn nikalo ---- */
+function scopeQuestions(scope){
+  const bk = books.find(b=>b.id===state.bookId);
+  if(!bk) return { qs:[], label:'', chapterId:null };
+  if(scope.type === 'chapter'){
+    const ch = bk.chapters.find(c=>c.id===scope.chapterId);
+    return { qs: ch ? ch.questions : [], label: ch ? ch.title : '', chapterId: scope.chapterId };
+  }
+  const all = [];
+  bk.chapters.forEach(c=> all.push.apply(all, c.questions));
+  return { qs: all, label: bk.title + ' — पूरी पुस्तक', chapterId: null };
+}
+
+function buildMode(mode, scope){
+  const { qs, chapterId } = scopeQuestions(scope);
+  if(mode === 'mcq')     return _shuffle(qs.slice());
+  if(mode === 'fill')    return _shuffle(genFill(qs));
+  if(mode === 'tf')      return genTF(qs);
+  if(mode === 'said')    return genSaid(state.bookId, chapterId);
+  if(mode === 'oneword') return _shuffle(genOneWord(qs));
+  return [];
+}
+
+const MODE_DEFS = [
+  { id:'mcq',     icon:'📖', name:'बहुविकल्पीय प्रश्न',  desc:'चार विकल्पों में से सही उत्तर चुनें' },
+  { id:'fill',    icon:'✏️', name:'रिक्त स्थान भरें',    desc:'खाली जगह के लिए सही शब्द चुनें' },
+  { id:'oneword', icon:'💡', name:'एक शब्द में उत्तर',   desc:'मन में उत्तर सोचें, फिर मिलाएँ' },
+  { id:'tf',      icon:'⚖️', name:'सही / गलत',          desc:'कथन सही है या गलत — बताएँ' },
+  { id:'said',    icon:'💬', name:'किसने किससे कहा',     desc:'कथन पहचानें — किसने, किससे कहा' }
+];
+
+let modeScope = { type:'chapter', chapterId:null };
+
+function openModes(scope){
+  modeScope = scope;
+  const { label } = scopeQuestions(scope);
+  hideAllScreens();
+  document.getElementById('mode-screen').classList.remove('hidden');
+  document.getElementById('mode-title').textContent = label;
+
+  const grid = document.getElementById('mode-grid');
+  grid.innerHTML = '';
+  let anyExtra = 0;
+
+  MODE_DEFS.forEach(md=>{
+    const items = buildMode(md.id, scope);
+    const n = items.length;
+    if(md.id !== 'mcq' && n) anyExtra++;
+    const card = document.createElement('div');
+    card.className = 'mode-card' + (n ? '' : ' off');
+    card.innerHTML =
+      '<div class="mi">' + md.icon + '</div>' +
+      '<div class="mt"><b>' + md.name + '</b><small>' + md.desc + '</small></div>' +
+      '<div class="mc">' + (n ? n + ' प्रश्न' : 'उपलब्ध नहीं') + '</div>';
+    if(n){
+      card.addEventListener('click', ()=>{
+        navPush();
+        startMode(md.id, scope);
+      });
+    }
+    grid.appendChild(card);
+  });
+
+  document.getElementById('mode-scope').textContent =
+    anyExtra ? 'अभ्यास का प्रकार चुनें' : 'अभ्यास का प्रकार चुनें';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function startMode(mode, scope){
+  const items = buildMode(mode, scope);
+  if(!items.length) return;
+  const { label, chapterId } = scopeQuestions(scope);
+  const md = MODE_DEFS.filter(m=>m.id===mode)[0];
+  const full = label + ' • ' + md.name;
+  if(mode === 'oneword'){
+    startOneWord(items, full);
+  } else {
+    startQuiz(chapterId, items, full);
+  }
+}
+
+/* ============ एक शब्द में उत्तर (flashcard) ============ */
+let ow = { items:[], i:0, score:0, label:'' };
+
+function startOneWord(items, label){
+  ow = { items: items, i:0, score:0, label: label };
+  hideAllScreens();
+  document.getElementById('ow-screen').classList.remove('hidden');
+  document.getElementById('ow-title').textContent = label;
+  renderOneWord();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function renderOneWord(){
+  const it = ow.items[ow.i];
+  const total = ow.items.length;
+  document.getElementById('ow-progress').textContent = 'प्रश्न ' + (ow.i+1) + ' / ' + total;
+  document.getElementById('ow-score').textContent = 'स्कोर: ' + ow.score;
+  document.getElementById('ow-fill').style.width = ((ow.i/total)*100) + '%';
+  document.getElementById('ow-q').textContent = it.q;
+  const ansEl = document.getElementById('ow-ans');
+  const eEl   = document.getElementById('ow-e');
+  ansEl.textContent = it.ans;
+  eEl.textContent = it.e || '';
+  ansEl.classList.remove('show');
+  eEl.classList.remove('show');
+  document.getElementById('ow-reveal-row').style.display = 'flex';
+  document.getElementById('ow-grade').classList.remove('show');
+}
+
+function owGrade(correct){
+  if(correct) ow.score++;
+  if(ow.i < ow.items.length - 1){
+    ow.i++;
+    renderOneWord();
+  } else {
+    state.items = ow.items;
+    state.score = ow.score;
+    state.label = ow.label;
+    document.getElementById('ow-screen').classList.add('hidden');
+    showResult();
+  }
+}
+
+document.getElementById('ow-reveal').addEventListener('click', ()=>{
+  document.getElementById('ow-ans').classList.add('show');
+  const it = ow.items[ow.i];
+  if(it.e) document.getElementById('ow-e').classList.add('show');
+  document.getElementById('ow-reveal-row').style.display = 'none';
+  document.getElementById('ow-grade').classList.add('show');
+});
+document.getElementById('ow-right').addEventListener('click', ()=> owGrade(true));
+document.getElementById('ow-wrong').addEventListener('click', ()=> owGrade(false));
+document.getElementById('ow-back-btn').addEventListener('click', goBack);
+document.getElementById('mode-back-btn').addEventListener('click', goBack);
+document.getElementById('practice-whole-book-btn').addEventListener('click', ()=>{
+  navPush();
+  openModes({ type:'book' });
 });
 
 /* ============ PWA: install + service worker ============ */
