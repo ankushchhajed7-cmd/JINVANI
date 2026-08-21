@@ -4,6 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>जिनवाणी प्रश्नोत्तरी</title>
+
+<!-- ===== PWA (install on mobile) ===== -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#7a1f2b">
+<meta name="description" content="जैन कथा-साहित्य एवं तीर्थंकर-चरित्र पर आधारित प्रश्नोत्तरी">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="जिनवाणी">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Yatra+One&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -44,6 +57,36 @@
     margin-bottom:24px;
     position:relative;
   }
+  /* ---------- Brand logo (gold + silver mirror) ---------- */
+  .brand-logo{
+    width:96px;
+    height:96px;
+    display:block;
+    margin:0 auto 8px;
+    border-radius:50%;
+    filter:drop-shadow(0 6px 16px rgba(44,24,16,0.35));
+  }
+  /* ---------- Install button ---------- */
+  #install-btn{
+    display:none;
+    margin:14px auto 0;
+    padding:11px 22px;
+    border:none;
+    border-radius:999px;
+    font-family:'Mukta',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    color:#3a2405;
+    cursor:pointer;
+    background:linear-gradient(100deg,
+      #6a4708 0%, #a8760c 10%, #f0d179 20%, #fff8dc 28%,
+      #e3bb45 36%, #8f6208 46%, #d8ae37 55%, #fff3c4 64%,
+      #c9971d 72%, #7a5408 82%, #e8c766 91%, #5c3d05 100%);
+    box-shadow:0 4px 14px rgba(44,24,16,0.28), inset 0 1px 0 rgba(255,255,255,0.55);
+  }
+  #install-btn:active{transform:translateY(1px);}
+  #install-btn.show{display:block;}
+
   header.site .eyebrow{
     font-size:12px;
     letter-spacing:0.14em;
@@ -439,9 +482,11 @@
 <div class="wrap">
 
   <header class="site">
+    <img class="brand-logo" src="./icon-512.png" alt="भगवान महावीर स्वामी" width="96" height="96">
     <div class="eyebrow">जैन कथा-साहित्य</div>
     <h1>जिनवाणी प्रश्नोत्तरी</h1>
     <p class="sub">तीर्थंकर-चरित्र एवं सम्यक्त्व कथाओं पर आधारित प्रश्नोत्तरी</p>
+    <button id="install-btn" type="button">📲 ऐप इंस्टॉल करें</button>
   </header>
 
   <!-- BOOK SCREEN -->
@@ -3719,6 +3764,53 @@ document.addEventListener('visibilitychange', ()=>{
     lcStatus('रुका हुआ — प्रश्न ' + (listen.index+1) + ' / ' + listen.items.length);
   }
 });
+
+/* ============ PWA: install + service worker ============ */
+(function(){
+  var installBtn = document.getElementById('install-btn');
+  var deferred = null;
+
+  // standalone mein already chal raha hai to button mat dikhao
+  var standalone = window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferred = e;
+    if(!standalone && installBtn) installBtn.classList.add('show');
+  });
+
+  if(installBtn){
+    installBtn.addEventListener('click', function(){
+      if(deferred){
+        deferred.prompt();
+        deferred.userChoice.then(function(){
+          deferred = null;
+          installBtn.classList.remove('show');
+        });
+      } else {
+        alert('इंस्टॉल करने के लिए:\n\nChrome (Android): मेन्यू ⋮ → "ऐप इंस्टॉल करें" / "होम स्क्रीन में जोड़ें"\n\nSafari (iPhone): शेयर ⬆ → "Add to Home Screen"');
+      }
+    });
+  }
+
+  window.addEventListener('appinstalled', function(){
+    deferred = null;
+    if(installBtn) installBtn.classList.remove('show');
+  });
+
+  // iOS pe beforeinstallprompt nahi chalta — wahan bhi button dikhao
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if(isIOS && !standalone && installBtn) installBtn.classList.add('show');
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./sw.js').catch(function(err){
+        console.log('SW register failed:', err);
+      });
+    });
+  }
+})();
 
 /* ============ INIT ============ */
 renderBooks();

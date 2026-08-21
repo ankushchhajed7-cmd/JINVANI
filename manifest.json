@@ -1,0 +1,19 @@
+{
+  "name": "जिनवाणी प्रश्नोत्तरी",
+  "short_name": "जिनवाणी",
+  "description": "जैन कथा-साहित्य एवं तीर्थंकर-चरित्र पर आधारित प्रश्नोत्तरी — 7 पुस्तकें, 99 अध्याय, 1725 प्रश्न।",
+  "lang": "hi",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3e6c9",
+  "theme_color": "#7a1f2b",
+  "categories": ["education", "books"],
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
