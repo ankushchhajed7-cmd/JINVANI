@@ -362,6 +362,47 @@
     .chapter-card, .option, .progress-fill, .petal{ transition:none !important; }
   }
 
+  /* ---------- Book-wise non-stop listen ---------- */
+  .listen-book-bar{
+    display:flex;
+    gap:10px;
+    margin:0 0 16px;
+  }
+  .listen-book-bar button{
+    flex:1;
+    padding:13px 14px;
+    border:2px solid var(--gold);
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(220,174,58,0.18), rgba(184,134,11,0.10));
+    color:var(--maroon-deep);
+    font-family:'Mukta',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .listen-book-bar button:active{ background:rgba(184,134,11,0.22); }
+  .qa-chapter-head{
+    margin:22px 0 10px;
+    padding:10px 14px;
+    border-radius:10px;
+    background:linear-gradient(90deg, rgba(122,31,43,0.14), rgba(184,134,11,0.10));
+    border-left:5px solid var(--maroon);
+    font-family:'Yatra One', cursive;
+    font-size:17px;
+    color:var(--maroon-deep);
+  }
+  .qa-chapter-head span{
+    display:block;
+    font-family:'Mukta',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    color:#6b5540;
+    letter-spacing:0.06em;
+  }
+  .qa-chapter-head.playing{
+    background:linear-gradient(90deg, rgba(184,134,11,0.32), rgba(220,174,58,0.16));
+  }
+
   /* ---------- Listen (सुनें) mode ---------- */
   .listen-btn{
     display:block;
@@ -501,6 +542,9 @@
   <div id="home-screen" class="hidden">
     <button class="back-btn" id="back-to-books-btn">← पुस्तक सूची</button>
     <h2 class="book-title-heading" id="book-title-heading"></h2>
+    <div class="listen-book-bar" id="listen-book-bar">
+      <button type="button" id="listen-whole-book-btn">🔊 पूरी पुस्तक सुनें (नॉन-स्टॉप)</button>
+    </div>
     <div class="chapter-grid" id="chapter-grid"></div>
     <footer class="note" id="home-footer-note"></footer>
   </div>
@@ -3305,8 +3349,21 @@ function renderBooks(){
         <span>${chCount ? chCount + ' अध्याय, ' + qCount + ' प्रश्न' : 'जल्द आएगा'}</span>
         <span class="go">${chCount ? 'खोलें →' : ''}</span>
       </div>
+      ${chCount ? '<button class="listen-btn" type="button">🔊 पूरी पुस्तक सुनें (नॉन-स्टॉप)</button>' : ''}
     `;
-    card.addEventListener('click', ()=> selectBook(bk.id));
+    card.addEventListener('click', (e)=>{
+      if(e.target.closest('.listen-btn')) return;
+      navPush();
+      selectBook(bk.id);
+    });
+    const bLbtn = card.querySelector('.listen-btn');
+    if(bLbtn){
+      bLbtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        navPush();
+        openListenBook(bk.id, 'books');
+      });
+    }
     bookGrid.appendChild(card);
   });
 }
@@ -3323,13 +3380,17 @@ function selectBook(bookId){
   } else {
     footerNote.innerHTML = '';
   }
+  const lbar = document.getElementById('listen-book-bar');
+  if(lbar){
+    lbar.style.display = bk.chapters.length ? 'flex' : 'none';
+    const totQ = bk.chapters.reduce((a,c)=>a+c.questions.length,0);
+    document.getElementById('listen-whole-book-btn').textContent =
+      '🔊 पूरी पुस्तक सुनें — ' + bk.chapters.length + ' अध्याय, ' + totQ + ' प्रश्न (नॉन-स्टॉप)';
+  }
   renderHome();
 }
 
-document.getElementById('back-to-books-btn').addEventListener('click', ()=>{
-  homeScreen.classList.add('hidden');
-  bookScreen.classList.remove('hidden');
-});
+document.getElementById('back-to-books-btn').addEventListener('click', goBack);
 
 /* ============ RENDER HOME (chapters within selected book) ============ */
 function renderHome(){
@@ -3355,10 +3416,12 @@ function renderHome(){
     `;
     card.addEventListener('click', (e)=>{
       if(e.target.closest('.listen-btn')) return;
+      navPush();
       startQuiz(ch.id);
     });
     card.querySelector('.listen-btn').addEventListener('click', (e)=>{
       e.stopPropagation();
+      navPush();
       openListen(ch.id);
     });
     chapterGrid.appendChild(card);
@@ -3465,16 +3528,9 @@ document.getElementById('next-btn').addEventListener('click', ()=>{
   }
 });
 
-document.getElementById('back-btn').addEventListener('click', ()=>{
-  quizScreen.classList.add('hidden');
-  resultScreen.classList.add('hidden');
-  homeScreen.classList.remove('hidden');
-});
+document.getElementById('back-btn').addEventListener('click', goBack);
 
-document.getElementById('home-btn').addEventListener('click', ()=>{
-  resultScreen.classList.add('hidden');
-  homeScreen.classList.remove('hidden');
-});
+document.getElementById('home-btn').addEventListener('click', goBack);
 
 document.getElementById('retry-btn').addEventListener('click', ()=>{
   startQuiz(state.chapterId);
@@ -3534,13 +3590,48 @@ function drawLotus(pct){
   }
 }
 
+/* ============ NAVIGATION + हार्डवेयर बैक बटन ============ */
+const nav = { depth: 0 };
+
+function navPush(){
+  nav.depth++;
+  try { history.pushState({ jv:true, d:nav.depth }, ''); } catch(err){}
+}
+
+/* स्क्रीन देखकर एक स्तर पीछे जाएँ */
+function navigateBackOneLevel(){
+  if(!listenScreen.classList.contains('hidden')){
+    closeListen();
+  } else if(!resultScreen.classList.contains('hidden')){
+    resultScreen.classList.add('hidden');
+    homeScreen.classList.remove('hidden');
+  } else if(!quizScreen.classList.contains('hidden')){
+    quizScreen.classList.add('hidden');
+    homeScreen.classList.remove('hidden');
+  } else if(!homeScreen.classList.contains('hidden')){
+    homeScreen.classList.add('hidden');
+    bookScreen.classList.remove('hidden');
+  }
+}
+
+window.addEventListener('popstate', function(){
+  if(nav.depth > 0) nav.depth--;
+  navigateBackOneLevel();
+});
+
+/* इन-ऐप बैक बटन: history के ज़रिये, ताकि फ़ोन का बैक बटन भी सही चले */
+function goBack(){
+  if(nav.depth > 0){ history.back(); }
+  else { navigateBackOneLevel(); }
+}
+
 /* ============ LISTEN (सुनें) MODE ============ */
 const listenScreen = document.getElementById('listen-screen');
 const lcPlayBtn    = document.getElementById('lc-play');
 const lcStatusEl   = document.getElementById('lc-status');
 const qaListEl     = document.getElementById('qa-list');
 
-let listen = { chapterId:null, index:0, playing:false, items:[], _resume:null };
+let listen = { chapterId:null, index:0, playing:false, items:[], _resume:null, mode:'chapter', backTo:'home', bookTitle:'', chapterCount:0 };
 let listenUtter = null;
 let speechToken = 0;
 let listenRate = 1;
@@ -3569,9 +3660,15 @@ function openListen(chapterId){
   if(!ch) return;
 
   listen.chapterId = chapterId;
-  listen.items = ch.questions;
+  listen.items = ch.questions.map((q, n)=> Object.assign({}, q, {
+    _ch: ch.title, _chNo: 1, _qNo: n+1, _chStart: false, _chTotal: ch.questions.length
+  }));
   listen.index = 0;
   listen.playing = false;
+  listen.mode = 'chapter';
+  listen.backTo = 'home';
+  listen.chapterCount = 1;
+  document.getElementById('listen-back-btn').textContent = '← अध्याय सूची';
 
   bookScreen.classList.add('hidden');
   homeScreen.classList.add('hidden');
@@ -3592,20 +3689,83 @@ function openListen(chapterId){
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
+/* पूरी पुस्तक — सारे अध्याय एक के बाद एक, बिना रुके */
+function openListenBook(bookId, backTo){
+  stopSpeech();
+  const bk = books.find(b=>b.id===bookId);
+  if(!bk || !bk.chapters.length) return;
+
+  state.bookId = bookId;
+
+  const flat = [];
+  bk.chapters.forEach((ch, ci)=>{
+    ch.questions.forEach((q, qi)=>{
+      flat.push(Object.assign({}, q, {
+        _ch: ch.title,
+        _chNo: ci + 1,
+        _qNo: qi + 1,
+        _chTotal: ch.questions.length,
+        _chStart: qi === 0
+      }));
+    });
+  });
+
+  listen.chapterId = null;
+  listen.items = flat;
+  listen.index = 0;
+  listen.playing = false;
+  listen.mode = 'book';
+  listen.backTo = backTo || 'home';
+  listen.bookTitle = bk.title;
+  listen.chapterCount = bk.chapters.length;
+
+  bookScreen.classList.add('hidden');
+  homeScreen.classList.add('hidden');
+  quizScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  listenScreen.classList.remove('hidden');
+
+  document.getElementById('listen-back-btn').textContent =
+    (listen.backTo === 'books') ? '← पुस्तक सूची' : '← अध्याय सूची';
+  document.getElementById('listen-chapter-title').textContent = bk.title + ' — पूरी पुस्तक';
+  document.getElementById('listen-count-text').textContent =
+    bk.chapters.length + ' अध्याय • कुल ' + flat.length + ' प्रश्न-उत्तर • नॉन-स्टॉप';
+
+  renderQAList();
+  updatePlayBtn();
+  if(window.speechSynthesis){
+    lcStatus('▶ दबाएँ — पूरी पुस्तक बिना रुके चलेगी');
+  } else {
+    lcStatus('इस डिवाइस में वाणी सुविधा उपलब्ध नहीं है — प्रश्नोत्तर नीचे पढ़ सकते हैं');
+  }
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
 function closeListen(){
   stopSpeech();
   listen.playing = false;
   listenScreen.classList.add('hidden');
-  homeScreen.classList.remove('hidden');
+  if(listen.backTo === 'books'){
+    bookScreen.classList.remove('hidden');
+  } else {
+    homeScreen.classList.remove('hidden');
+  }
 }
 
 function renderQAList(){
   qaListEl.innerHTML = '';
   listen.items.forEach((q, i)=>{
+    if(listen.mode === 'book' && q._chStart){
+      const head = document.createElement('div');
+      head.className = 'qa-chapter-head';
+      head.dataset.chno = q._chNo;
+      head.innerHTML = `<span>अध्याय ${q._chNo} / ${listen.chapterCount} • ${q._chTotal} प्रश्न</span>${q._ch}`;
+      qaListEl.appendChild(head);
+    }
     const div = document.createElement('div');
     div.className = 'qa-item' + (i === listen.index ? ' active' : '');
     div.innerHTML = `
-      <div class="qa-num">प्रश्न ${i+1}</div>
+      <div class="qa-num">${listen.mode === 'book' ? 'अध्याय ' + q._chNo + ' — प्रश्न ' + q._qNo : 'प्रश्न ' + (i+1)}</div>
       <div class="qa-q">${q.q}</div>
       <div class="qa-a">उत्तर: ${q.o[q.a]}</div>
       ${q.e ? `<div class="qa-e">${q.e}</div>` : ''}
@@ -3618,6 +3778,12 @@ function renderQAList(){
 function highlightQA(i, scroll){
   const items = qaListEl.querySelectorAll('.qa-item');
   items.forEach((el, idx)=> el.classList.toggle('active', idx === i));
+  if(listen.mode === 'book'){
+    const cur = listen.items[i] ? listen.items[i]._chNo : 0;
+    qaListEl.querySelectorAll('.qa-chapter-head').forEach(h=>{
+      h.classList.toggle('playing', Number(h.dataset.chno) === cur);
+    });
+  }
   if(scroll && items[i]) items[i].scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
@@ -3646,7 +3812,14 @@ function splitForSpeech(text, maxLen){
 function speakQA(i, onDone){
   if(!window.speechSynthesis) return;
   const q = listen.items[i];
-  const chunks = splitForSpeech('प्रश्न ' + (i+1) + '. ' + q.q + ' उत्तर. ' + q.o[q.a]);
+  let text;
+  if(listen.mode === 'book'){
+    const lead = q._chStart ? ('अध्याय ' + q._chNo + '. ' + q._ch + '. ') : '';
+    text = lead + 'प्रश्न ' + q._qNo + '. ' + q.q + ' उत्तर. ' + q.o[q.a];
+  } else {
+    text = 'प्रश्न ' + (i+1) + '. ' + q.q + ' उत्तर. ' + q.o[q.a];
+  }
+  const chunks = splitForSpeech(text);
 
   speechToken++;
   const myToken = speechToken;
@@ -3670,6 +3843,16 @@ function speakQA(i, onDone){
   speakNext();
 }
 
+function listenStatusText(i){
+  const q = listen.items[i];
+  if(listen.mode === 'book' && q){
+    return 'चल रहा है — अध्याय ' + q._chNo + '/' + listen.chapterCount +
+           ' • प्रश्न ' + q._qNo + '/' + q._chTotal +
+           ' (कुल ' + (i+1) + '/' + listen.items.length + ')';
+  }
+  return 'चल रहा है — ' + (i+1) + ' / ' + listen.items.length;
+}
+
 function playFrom(i){
   if(!window.speechSynthesis){
     lcStatus('इस डिवाइस में वाणी सुविधा उपलब्ध नहीं है');
@@ -3681,15 +3864,17 @@ function playFrom(i){
   listen.playing = true;
   updatePlayBtn();
   highlightQA(i, true);
-  lcStatus('चल रहा है — ' + (i+1) + ' / ' + listen.items.length);
+  lcStatus(listenStatusText(i));
 
   speakQA(i, ()=>{
     if(listen.index + 1 < listen.items.length){
-      playFrom(listen.index + 1);
+      playFrom(listen.index + 1);   // अध्याय बदलने पर भी बिना रुके आगे
     } else {
       listen.playing = false;
       updatePlayBtn();
-      lcStatus('समाप्त — सभी ' + listen.items.length + ' प्रश्न-उत्तर सुन लिए');
+      lcStatus(listen.mode === 'book'
+        ? 'समाप्त — पूरी पुस्तक के सभी ' + listen.items.length + ' प्रश्न-उत्तर सुन लिए'
+        : 'समाप्त — सभी ' + listen.items.length + ' प्रश्न-उत्तर सुन लिए');
     }
   });
 }
@@ -3717,7 +3902,10 @@ function jumpListen(delta){
   } else {
     listen.index = ni;
     highlightQA(ni, true);
-    lcStatus('प्रश्न ' + (ni+1) + ' / ' + listen.items.length + ' — ▶ दबाएँ');
+    const nq = listen.items[ni];
+    lcStatus(listen.mode === 'book'
+      ? ('अध्याय ' + nq._chNo + ' • प्रश्न ' + nq._qNo + '/' + nq._chTotal + ' — ▶ दबाएँ')
+      : ('प्रश्न ' + (ni+1) + ' / ' + listen.items.length + ' — ▶ दबाएँ'));
   }
 }
 
@@ -3740,7 +3928,13 @@ document.getElementById('lc-rate').addEventListener('click', ()=>{
   document.getElementById('lc-rate').textContent = listenRate + 'x';
   if(listen.playing) playFrom(listen.index);   // नई गति तुरंत लागू करें
 });
-document.getElementById('listen-back-btn').addEventListener('click', closeListen);
+document.getElementById('listen-back-btn').addEventListener('click', goBack);
+
+/* पूरी पुस्तक सुनें — अध्याय सूची वाली पट्टी से */
+document.getElementById('listen-whole-book-btn').addEventListener('click', ()=>{
+  navPush();
+  openListenBook(state.bookId, 'home');
+});
 
 /* watchdog: अगर वाणी बीच में चुपचाप रुक जाए तो उसी जगह से आगे बढ़ाएँ */
 let listenStall = 0;
