@@ -391,6 +391,56 @@
     text-align:center; font-size:13.5px; color:#6b5540; margin:0 0 14px;
   }
 
+  /* ---------- Number answer ---------- */
+  .num-card{
+    background:rgba(255,255,255,0.6);
+    border:2px solid rgba(122,31,43,0.22);
+    border-radius:16px;
+    padding:20px 16px;
+    box-shadow:var(--shadow);
+  }
+  .num-q{ font-size:18px; line-height:1.65; color:var(--ink); margin:0 0 16px; }
+  .num-display{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    min-height:62px; margin:0 0 6px;
+    border-radius:12px;
+    border:2px dashed rgba(184,134,11,0.55);
+    background:rgba(255,255,255,0.55);
+    padding:8px 12px;
+  }
+  .num-display b{
+    font-family:'Yatra One',cursive; font-size:30px; letter-spacing:2px;
+    color:var(--maroon-deep); font-weight:normal; min-width:1ch;
+  }
+  .num-display b.empty{ color:#b9a68c; }
+  .num-display span{ font-size:16px; color:#6b5540; font-family:'Mukta',sans-serif; }
+  .num-hint{ text-align:center; font-size:12.5px; color:#7d6a52; margin:0 0 12px; }
+  .num-pad{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+  .num-pad button{
+    padding:15px 0; border-radius:12px; border:2px solid rgba(122,31,43,0.20);
+    background:rgba(255,255,255,0.75);
+    font-family:'Mukta',sans-serif; font-size:22px; font-weight:700;
+    color:var(--maroon-deep); cursor:pointer;
+  }
+  .num-pad button:active{ background:rgba(184,134,11,0.18); }
+  .num-pad button.wide{ grid-column:span 1; font-size:17px; }
+  .num-pad button.go{
+    background:linear-gradient(180deg,#dcae3a,#b8860b); color:#3a2405;
+    border-color:var(--gold); font-size:17px;
+  }
+  .num-feedback{ display:none; margin-top:14px; padding:13px 12px; border-radius:12px; font-size:15px; line-height:1.6; }
+  .num-feedback.show{ display:block; }
+  .num-feedback.ok{ background:rgba(90,122,74,0.16); border:2px solid var(--sage); color:#3d5730; }
+  .num-feedback.no{ background:rgba(166,74,45,0.14); border:2px solid var(--rust); color:#7d3218; }
+  .num-feedback .ex{ display:block; margin-top:7px; font-size:14px; color:#5a4633; }
+  #num-next{
+    display:none; width:100%; margin-top:14px; padding:14px;
+    border:none; border-radius:12px;
+    background:linear-gradient(180deg,#dcae3a,#b8860b); color:#3a2405;
+    font-family:'Mukta',sans-serif; font-size:16px; font-weight:700; cursor:pointer;
+  }
+  #num-next.show{ display:block; }
+
   /* ---------- One-word (flashcard) ---------- */
   .ow-card{
     background:rgba(255,255,255,0.6);
@@ -617,6 +667,42 @@
     <div class="chapter-title-small" id="mode-title"></div>
     <p class="mode-scope" id="mode-scope"></p>
     <div class="mode-grid" id="mode-grid"></div>
+  </div>
+
+  <!-- NUMBER SCREEN -->
+  <div id="num-screen" class="hidden">
+    <div class="quiz-header">
+      <button class="back-btn" id="num-back-btn">← वापस</button>
+      <span class="score-pill" id="num-score">स्कोर: 0</span>
+    </div>
+    <div class="chapter-title-small" id="num-title"></div>
+    <div class="q-count" id="num-progress"></div>
+    <div class="progress-track"><div class="progress-fill" id="num-fill" style="width:0%"></div></div>
+
+    <div class="num-card">
+      <p class="num-q" id="num-q"></p>
+      <div class="num-display">
+        <b id="num-typed" class="empty">–</b>
+        <span id="num-unit"></span>
+      </div>
+      <p class="num-hint">अंक दबाकर उत्तर लिखें, फिर ✓ जाँचें</p>
+      <div class="num-pad" id="num-pad">
+        <button type="button" data-k="1">1</button>
+        <button type="button" data-k="2">2</button>
+        <button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button>
+        <button type="button" data-k="5">5</button>
+        <button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button>
+        <button type="button" data-k="8">8</button>
+        <button type="button" data-k="9">9</button>
+        <button type="button" class="wide" data-k="del">⌫ मिटाएँ</button>
+        <button type="button" data-k="0">0</button>
+        <button type="button" class="go" data-k="ok">✓ जाँचें</button>
+      </div>
+      <div class="num-feedback" id="num-feedback"></div>
+      <button type="button" id="num-next">अगला प्रश्न →</button>
+    </div>
   </div>
 
   <!-- ONE-WORD SCREEN -->
@@ -6412,6 +6498,7 @@ function hideAllScreens(){
   listenScreen.classList.add('hidden');
   document.getElementById('mode-screen').classList.add('hidden');
   document.getElementById('ow-screen').classList.add('hidden');
+  document.getElementById('num-screen').classList.add('hidden');
 }
 
 function currentChapter(){
@@ -6575,8 +6662,12 @@ function navPush(){
 function navigateBackOneLevel(){
   const modeScreen = document.getElementById('mode-screen');
   const owScreen   = document.getElementById('ow-screen');
+  const numScreen  = document.getElementById('num-screen');
   if(!listenScreen.classList.contains('hidden')){
     closeListen();
+  } else if(!numScreen.classList.contains('hidden')){
+    numScreen.classList.add('hidden');
+    openModes(modeScope);
   } else if(!owScreen.classList.contains('hidden')){
     owScreen.classList.add('hidden');
     openModes(modeScope);
@@ -7220,6 +7311,25 @@ function genTF(qs){
   return _shuffle(T.slice(0,n).concat(F.slice(0,n)));
 }
 
+/* संख्या में उत्तर — जिन प्रश्नों के चारों विकल्प संख्या हैं */
+const _NUMRE = /^\s*([0-9][0-9,]*)\s*(.*)$/;
+function genNumber(qs){
+  const out = [];
+  qs.forEach(q=>{
+    const parsed = q.o.map(o=> o.trim().match(_NUMRE));
+    if(parsed.some(p=>!p)) return;
+    const vals = parsed.map(p=> p[1].replace(/,/g,''));
+    if(vals.some(v=> !/^[0-9]{1,9}$/.test(v))) return;
+    if(new Set(vals).size !== 4) return;
+    const unit = parsed[q.a][2].trim();
+    /* इकाई छोटी हो और उसमें कोई अंक न हो — वरना उत्तर मिश्रित हो जाता है */
+    if(/[0-9]/.test(unit)) return;
+    if(unit.length > 12) return;
+    out.push({ q: q.q, val: vals[q.a], unit: unit, e: (q.e||'').trim() });
+  });
+  return out;
+}
+
 /* किसने किससे कहा */
 function genSaid(bookId, chapterId){
   const pool = SAID_DATA[bookId] || [];
@@ -7267,6 +7377,7 @@ function buildMode(mode, scope){
   if(mode === 'tf')      return genTF(qs);
   if(mode === 'said')    return genSaid(state.bookId, chapterId);
   if(mode === 'oneword') return _shuffle(genOneWord(qs));
+  if(mode === 'number')  return _shuffle(genNumber(qs));
   return [];
 }
 
@@ -7275,6 +7386,7 @@ const MODE_DEFS = [
   { id:'fill',    icon:'✏️', name:'रिक्त स्थान भरें',    desc:'खाली जगह के लिए सही शब्द चुनें' },
   { id:'oneword', icon:'💡', name:'एक शब्द में उत्तर',   desc:'मन में उत्तर सोचें, फिर मिलाएँ' },
   { id:'tf',      icon:'⚖️', name:'सही / गलत',          desc:'कथन सही है या गलत — बताएँ' },
+  { id:'number',  icon:'🔢', name:'संख्या में उत्तर',     desc:'अंक दबाकर सही संख्या लिखें' },
   { id:'said',    icon:'💬', name:'किसने किससे कहा',     desc:'कथन पहचानें — किसने, किससे कहा' }
 ];
 
@@ -7323,10 +7435,99 @@ function startMode(mode, scope){
   const full = label + ' • ' + md.name;
   if(mode === 'oneword'){
     startOneWord(items, full);
+  } else if(mode === 'number'){
+    startNumber(items, full);
   } else {
     startQuiz(chapterId, items, full);
   }
 }
+
+/* ============ संख्या में उत्तर (numeric keypad) ============ */
+let num = { items:[], i:0, score:0, label:'', typed:'', done:false };
+
+function startNumber(items, label){
+  num = { items: items, i:0, score:0, label: label, typed:'', done:false };
+  hideAllScreens();
+  document.getElementById('num-screen').classList.remove('hidden');
+  document.getElementById('num-title').textContent = label;
+  renderNumber();
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function renderNumber(){
+  const it = num.items[num.i];
+  const total = num.items.length;
+  num.typed = '';
+  num.done = false;
+  document.getElementById('num-progress').textContent = 'प्रश्न ' + (num.i+1) + ' / ' + total;
+  document.getElementById('num-score').textContent = 'स्कोर: ' + num.score;
+  document.getElementById('num-fill').style.width = ((num.i/total)*100) + '%';
+  document.getElementById('num-q').textContent = it.q;
+  document.getElementById('num-unit').textContent = it.unit || '';
+  const fb = document.getElementById('num-feedback');
+  fb.className = 'num-feedback';
+  fb.innerHTML = '';
+  document.getElementById('num-next').classList.remove('show');
+  document.getElementById('num-pad').style.display = 'grid';
+  updateTyped();
+}
+
+function updateTyped(){
+  const el = document.getElementById('num-typed');
+  if(num.typed){
+    el.textContent = num.typed;
+    el.classList.remove('empty');
+  } else {
+    el.textContent = '–';
+    el.classList.add('empty');
+  }
+}
+
+function checkNumber(){
+  if(num.done || !num.typed) return;
+  num.done = true;
+  const it = num.items[num.i];
+  const right = String(Number(num.typed)) === String(Number(it.val));
+  if(right) num.score++;
+  const fb = document.getElementById('num-feedback');
+  fb.className = 'num-feedback show ' + (right ? 'ok' : 'no');
+  fb.innerHTML = (right ? '✔ सही! उत्तर है ' : '✘ गलत — सही उत्तर है ')
+    + it.val + (it.unit ? ' ' + it.unit : '')
+    + (it.e ? '<span class="ex">' + it.e + '</span>' : '');
+  document.getElementById('num-score').textContent = 'स्कोर: ' + num.score;
+  document.getElementById('num-pad').style.display = 'none';
+  document.getElementById('num-next').classList.add('show');
+  document.getElementById('num-next').textContent =
+    (num.i < num.items.length - 1) ? 'अगला प्रश्न →' : 'परिणाम देखें →';
+}
+
+document.getElementById('num-pad').addEventListener('click', (e)=>{
+  const b = e.target.closest('button');
+  if(!b || num.done) return;
+  const k = b.dataset.k;
+  if(k === 'ok'){ checkNumber(); return; }
+  if(k === 'del'){ num.typed = num.typed.slice(0,-1); updateTyped(); return; }
+  if(num.typed.length >= 9) return;
+  if(num.typed === '' && k === '0') return;
+  num.typed += k;
+  updateTyped();
+});
+
+document.getElementById('num-next').addEventListener('click', ()=>{
+  if(num.i < num.items.length - 1){
+    num.i++;
+    renderNumber();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  } else {
+    state.items = num.items;
+    state.score = num.score;
+    state.label = num.label;
+    document.getElementById('num-screen').classList.add('hidden');
+    showResult();
+  }
+});
+
+document.getElementById('num-back-btn').addEventListener('click', goBack);
 
 /* ============ एक शब्द में उत्तर (flashcard) ============ */
 let ow = { items:[], i:0, score:0, label:'' };

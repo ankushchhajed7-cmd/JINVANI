@@ -1,5 +1,5 @@
 /* जिनवाणी प्रश्नोत्तरी — service worker */
-const VERSION = 'v13.0.0';
+const VERSION = 'v13.1.0';
 const CACHE = 'jinvani-' + VERSION;
 
 const ASSETS = [
