@@ -385,6 +385,14 @@
     font-size:13px; font-weight:700; color:var(--gold);
     white-space:nowrap;
   }
+  .mode-card .mode-listen{
+    flex:0 0 auto; margin-left:10px;
+    width:42px; height:42px; border-radius:50%;
+    border:2px solid var(--gold);
+    background:linear-gradient(180deg, rgba(220,174,58,0.28), rgba(184,134,11,0.14));
+    font-size:19px; line-height:1; cursor:pointer;
+  }
+  .mode-card .mode-listen:active{ background:rgba(184,134,11,0.30); }
   .mode-card.off{ opacity:0.42; cursor:default; }
   .mode-card.off:active{ background:rgba(255,255,255,0.55); }
   .mode-scope{
@@ -6716,6 +6724,23 @@ function updatePlayBtn(){
   lcPlayBtn.textContent = listen.playing ? '⏸ रोकें' : '▶ सुनें';
 }
 
+/* स्क्रीन बंद होने पर भी वाणी रुक जाती है, इसलिए सुनते समय स्क्रीन जगाये रखें */
+let wakeLock = null;
+async function acquireWakeLock(){
+  try{
+    if('wakeLock' in navigator && !wakeLock){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock = null; });
+    }
+  }catch(e){ wakeLock = null; }
+}
+function releaseWakeLock(){
+  try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){ wakeLock = null; }
+}
+function reacquireWakeLock(){
+  if(listen.playing && !document.hidden) acquireWakeLock();
+}
+
 function stopSpeech(){
   speechToken++;
   listen._resume = null;
@@ -6817,9 +6842,12 @@ function openListenBook(bookId, backTo){
 function closeListen(){
   stopSpeech();
   listen.playing = false;
+  releaseWakeLock();
   listenScreen.classList.add('hidden');
   if(listen.backTo === 'books'){
     bookScreen.classList.remove('hidden');
+  } else if(listen.backTo === 'mode'){
+    openModes(modeScope);
   } else {
     homeScreen.classList.remove('hidden');
   }
@@ -6840,7 +6868,7 @@ function renderQAList(){
     div.innerHTML = `
       <div class="qa-num">${listen.mode === 'book' ? 'अध्याय ' + q._chNo + ' — प्रश्न ' + q._qNo : 'प्रश्न ' + (i+1)}</div>
       <div class="qa-q">${q.q}</div>
-      <div class="qa-a">उत्तर: ${q.o[q.a]}</div>
+      <div class="qa-a">उत्तर: ${q._ansText || q.o[q.a]}</div>
       ${q.e ? `<div class="qa-e">${q.e}</div>` : ''}
     `;
     div.addEventListener('click', ()=> playFrom(i));
@@ -6886,7 +6914,11 @@ function speakQA(i, onDone){
   if(!window.speechSynthesis) return;
   const q = listen.items[i];
   let text;
-  if(listen.mode === 'book'){
+  if(q._say){
+    const lead = (listen.mode === 'book' && q._chStart)
+      ? ('अध्याय ' + q._chNo + '. ' + q._ch + '. ') : '';
+    text = lead + q._say;
+  } else if(listen.mode === 'book'){
     const lead = q._chStart ? ('अध्याय ' + q._chNo + '. ' + q._ch + '. ') : '';
     text = lead + 'प्रश्न ' + q._qNo + '. ' + q.q + ' उत्तर. ' + q.o[q.a];
   } else {
@@ -6944,6 +6976,7 @@ function playFrom(i){
       playFrom(listen.index + 1);   // अध्याय बदलने पर भी बिना रुके आगे
     } else {
       listen.playing = false;
+      releaseWakeLock();
       updatePlayBtn();
       lcStatus(listen.mode === 'book'
         ? 'समाप्त — पूरी पुस्तक के सभी ' + listen.items.length + ' प्रश्न-उत्तर सुन लिए'
@@ -6960,9 +6993,11 @@ function toggleListenPlay(){
   if(listen.playing){
     listen.playing = false;
     stopSpeech();
+    releaseWakeLock();
     updatePlayBtn();
     lcStatus('रुका हुआ — प्रश्न ' + (listen.index+1) + ' / ' + listen.items.length);
   } else {
+    acquireWakeLock();
     playFrom(listen.index);
   }
 }
@@ -7009,26 +7044,41 @@ document.getElementById('listen-whole-book-btn').addEventListener('click', ()=>{
   openListenBook(state.bookId, 'home');
 });
 
-/* watchdog: अगर वाणी बीच में चुपचाप रुक जाए तो उसी जगह से आगे बढ़ाएँ */
+/* Chrome का जाना-माना बग: लगातार ~15 सेकंड बोलने के बाद वाणी चुपचाप रुक जाती है।
+   हर 6 सेकंड pause+resume करने से वह रुकती नहीं। */
+setInterval(()=>{
+  if(!listen.playing || !window.speechSynthesis) return;
+  const ss = window.speechSynthesis;
+  if(ss.speaking && !ss.paused){
+    try { ss.pause(); ss.resume(); } catch(e){}
+  }
+}, 6000);
+
+/* watchdog: फिर भी वाणी बीच में रुक जाए तो उसी जगह से आगे बढ़ाएँ */
 let listenStall = 0;
 setInterval(()=>{
   if(!listen.playing || !window.speechSynthesis){ listenStall = 0; return; }
   const ss = window.speechSynthesis;
   if(ss.speaking || ss.pending){ listenStall = 0; return; }
+  if(ss.paused){ ss.resume(); return; }
   listenStall++;
   if(listenStall >= 2){
     listenStall = 0;
     if(typeof listen._resume === 'function') listen._resume();
   }
-}, 1200);
+}, 700);
 
-/* ऐप बैकग्राउंड में जाए तो वाणी बंद करें */
+/* ऐप वापस सामने आने पर वाणी अपने आप आगे चले — बीच में बंद न हो */
 document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && listen.playing){
-    listen.playing = false;
-    stopSpeech();
-    updatePlayBtn();
-    lcStatus('रुका हुआ — प्रश्न ' + (listen.index+1) + ' / ' + listen.items.length);
+  if(document.hidden) return;
+  reacquireWakeLock();
+  if(listen.playing && window.speechSynthesis){
+    const ss = window.speechSynthesis;
+    ss.resume();
+    setTimeout(()=>{
+      if(listen.playing && !ss.speaking && !ss.pending &&
+         typeof listen._resume === 'function') listen._resume();
+    }, 400);
   }
 });
 
@@ -7412,11 +7462,18 @@ function openModes(scope){
     card.innerHTML =
       '<div class="mi">' + md.icon + '</div>' +
       '<div class="mt"><b>' + md.name + '</b><small>' + md.desc + '</small></div>' +
-      '<div class="mc">' + (n ? n + ' प्रश्न' : 'उपलब्ध नहीं') + '</div>';
+      '<div class="mc">' + (n ? n + ' प्रश्न' : 'उपलब्ध नहीं') + '</div>' +
+      (n ? '<button class="mode-listen" type="button" title="सुनें">🔊</button>' : '');
     if(n){
-      card.addEventListener('click', ()=>{
+      card.addEventListener('click', (e)=>{
+        if(e.target.closest('.mode-listen')) return;
         navPush();
         startMode(md.id, scope);
+      });
+      card.querySelector('.mode-listen').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        navPush();
+        openListenMode(md.id, scope);
       });
     }
     grid.appendChild(card);
@@ -7424,6 +7481,67 @@ function openModes(scope){
 
   document.getElementById('mode-scope').textContent =
     anyExtra ? 'अभ्यास का प्रकार चुनें' : 'अभ्यास का प्रकार चुनें';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* किसी भी अभ्यास-मोड को 'सुनें' रूप में खोलें — उत्तर अपने आप बोला जाएगा */
+function openListenMode(mode, scope){
+  const items = buildMode(mode, scope);
+  if(!items.length) return;
+  const { label, chapterId } = scopeQuestions(scope);
+  const md = MODE_DEFS.filter(m=>m.id===mode)[0];
+
+  const prep = items.map((it, n)=>{
+    const o = Object.assign({}, it);
+    let ansText, say;
+    if(mode === 'oneword'){
+      ansText = it.ans;
+      say = 'प्रश्न ' + (n+1) + '. ' + it.q + ' उत्तर. ' + it.ans;
+    } else if(mode === 'number'){
+      ansText = it.val + (it.unit ? ' ' + it.unit : '');
+      say = 'प्रश्न ' + (n+1) + '. ' + it.q + ' उत्तर. ' + ansText;
+    } else if(mode === 'fill'){
+      ansText = it.o[it.a];
+      say = 'रिक्त स्थान ' + (n+1) + '. ' + it.q.replace(/_+/g, ' रिक्त स्थान ') +
+            ' उत्तर. ' + ansText;
+    } else if(mode === 'tf'){
+      ansText = it.o[it.a];
+      say = 'कथन ' + (n+1) + '. ' + it.q + ' उत्तर. यह कथन ' + ansText + ' है.';
+    } else if(mode === 'said'){
+      ansText = it.o[it.a];
+      say = (n+1) + '. ' + it.q.replace(/\n+/g, ' ') + ' उत्तर. ' + ansText;
+    } else {
+      ansText = it.o[it.a];
+      say = 'प्रश्न ' + (n+1) + '. ' + it.q + ' उत्तर. ' + ansText;
+    }
+    o._ansText = ansText;
+    o._say = say;
+    o._ch = label; o._chNo = 1; o._qNo = n+1;
+    o._chStart = false; o._chTotal = items.length;
+    if(!o.o){ o.o = [ansText, '', '', '']; o.a = 0; }
+    return o;
+  });
+
+  stopSpeech();
+  listen.chapterId = chapterId;
+  listen.items = prep;
+  listen.index = 0;
+  listen.playing = false;
+  listen.mode = 'mode';
+  listen.backTo = 'mode';
+  listen.chapterCount = 1;
+
+  hideAllScreens();
+  listenScreen.classList.remove('hidden');
+  document.getElementById('listen-back-btn').textContent = '← वापस';
+  document.getElementById('listen-chapter-title').textContent = label + ' • ' + md.name;
+  document.getElementById('listen-count-text').textContent =
+    prep.length + ' प्रश्न-उत्तर • नॉन-स्टॉप';
+  renderQAList();
+  updatePlayBtn();
+  lcStatus(window.speechSynthesis
+    ? '▶ दबाएँ — उत्तर सहित बिना रुके चलेगा'
+    : 'इस डिवाइस में वाणी सुविधा उपलब्ध नहीं है');
   window.scrollTo({ top:0, behavior:'smooth' });
 }
 
