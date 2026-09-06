@@ -6724,6 +6724,11 @@ function updatePlayBtn(){
   lcPlayBtn.textContent = listen.playing ? '⏸ रोकें' : '▶ सुनें';
 }
 
+/* वाणी की 'धड़कन' — हर बार कुछ बोला/शुरू हुआ तो समय दर्ज कर लेते हैं,
+   जिससे watchdog पहचान सके कि वाणी सचमुच चल रही है या अटक गई है */
+let listenLastBeat = Date.now();
+function listenBeat(){ listenLastBeat = Date.now(); }
+
 /* स्क्रीन बंद होने पर भी वाणी रुक जाती है, इसलिए सुनते समय स्क्रीन जगाये रखें */
 let wakeLock = null;
 async function acquireWakeLock(){
@@ -6890,7 +6895,7 @@ function highlightQA(i, scroll){
 
 /* लंबे वाक्य को छोटे टुकड़ों में बाँटें — इससे ब्राउज़र वाणी बीच में नहीं टूटती */
 function splitForSpeech(text, maxLen){
-  maxLen = maxLen || 130;
+  maxLen = maxLen || 90;   /* छोटे टुकड़े — कोई भी वाक्य Chrome की 15-सेकंड सीमा तक न पहुँचे */
   const words = text.split(/\s+/).filter(Boolean);
   const chunks = [];
   let cur = '';
@@ -6939,9 +6944,12 @@ function speakQA(i, onDone){
     if(hindiVoice) u.voice = hindiVoice;
     u.rate = listenRate;
     u.pitch = 1;
-    u.onend   = ()=> speakNext();
-    u.onerror = ()=> speakNext();
+    u.onstart    = ()=> listenBeat();
+    u.onboundary = ()=> listenBeat();
+    u.onend      = ()=>{ listenBeat(); speakNext(); };
+    u.onerror    = ()=>{ listenBeat(); speakNext(); };
     listenUtter = u;
+    listenBeat();
     window.speechSynthesis.speak(u);
   };
   listen._resume = speakNext;
@@ -6967,6 +6975,7 @@ function playFrom(i){
 
   listen.index = i;
   listen.playing = true;
+  listenBeat();
   updatePlayBtn();
   highlightQA(i, true);
   lcStatus(listenStatusText(i));
@@ -7044,29 +7053,50 @@ document.getElementById('listen-whole-book-btn').addEventListener('click', ()=>{
   openListenBook(state.bookId, 'home');
 });
 
-/* Chrome का जाना-माना बग: लगातार ~15 सेकंड बोलने के बाद वाणी चुपचाप रुक जाती है।
-   हर 6 सेकंड pause+resume करने से वह रुकती नहीं। */
+/* watchdog — वाणी की धड़कन पर नज़र रखता है।
+   (पहले यहाँ हर 6 सेकंड pause()+resume() चलता था; Android Chrome पर pause()
+   वाणी को चुपचाप अटका देता है, इसीलिए वह हटा दिया गया है।) */
+let listenRetry = 0;
 setInterval(()=>{
-  if(!listen.playing || !window.speechSynthesis) return;
+  if(!listen.playing || !window.speechSynthesis){ listenRetry = 0; return; }
   const ss = window.speechSynthesis;
-  if(ss.speaking && !ss.paused){
-    try { ss.pause(); ss.resume(); } catch(e){}
-  }
-}, 6000);
 
-/* watchdog: फिर भी वाणी बीच में रुक जाए तो उसी जगह से आगे बढ़ाएँ */
-let listenStall = 0;
-setInterval(()=>{
-  if(!listen.playing || !window.speechSynthesis){ listenStall = 0; return; }
-  const ss = window.speechSynthesis;
-  if(ss.speaking || ss.pending){ listenStall = 0; return; }
-  if(ss.paused){ ss.resume(); return; }
-  listenStall++;
-  if(listenStall >= 2){
-    listenStall = 0;
-    if(typeof listen._resume === 'function') listen._resume();
+  /* किसी कारण रुक गई हो तो सबसे पहले चालू करो */
+  if(ss.paused){ try{ ss.resume(); }catch(e){} listenBeat(); return; }
+
+  const gap = Date.now() - listenLastBeat;
+
+  /* बोल रही है और धड़कन आ रही है — सब ठीक */
+  if((ss.speaking || ss.pending) && gap < 12000){ listenRetry = 0; return; }
+
+  /* चुप है — उसी जगह से फिर चालू करो */
+  if(!ss.speaking && !ss.pending && gap > 1200){
+    listenRetry++;
+    listenBeat();
+    if(listenRetry <= 3){
+      if(typeof listen._resume === 'function') listen._resume();
+    } else {
+      listenRetry = 0;
+      if(listen.index + 1 < listen.items.length) playFrom(listen.index + 1);
+      else { listen.playing = false; releaseWakeLock(); updatePlayBtn(); }
+    }
+    return;
   }
-}, 700);
+
+  /* speaking तो दिखा रही है पर 12 सेकंड से कोई हलचल नहीं — अटकी हुई है */
+  if(gap > 12000){
+    listenBeat();
+    try{ ss.cancel(); }catch(e){}
+    listenRetry++;
+    if(listenRetry <= 2){
+      if(typeof listen._resume === 'function') setTimeout(listen._resume, 120);
+    } else {
+      listenRetry = 0;
+      if(listen.index + 1 < listen.items.length) setTimeout(()=> playFrom(listen.index + 1), 120);
+      else { listen.playing = false; releaseWakeLock(); updatePlayBtn(); }
+    }
+  }
+}, 500);
 
 /* ऐप वापस सामने आने पर वाणी अपने आप आगे चले — बीच में बंद न हो */
 document.addEventListener('visibilitychange', ()=>{
